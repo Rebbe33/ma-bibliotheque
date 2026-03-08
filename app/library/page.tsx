@@ -1,0 +1,253 @@
+'use client'
+import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
+import { createClient } from '@/lib/supabase'
+import { Book, BookStatus } from '@/types'
+import AppLayout from '@/components/layout/AppLayout'
+import BottomSheet from '@/components/ui/BottomSheet'
+import BookForm from '@/components/ui/BookForm'
+import BookCard from '@/components/ui/BookCard'
+import { ToastProvider, useToast } from '@/components/ui/Toast'
+import { Search, X, Plus, SlidersHorizontal } from 'lucide-react'
+
+const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
+const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀' }
+const STATUS_BG: Record<BookStatus, string> = {
+  'Lu': 'bg-mint-light text-mint-dark', 'En cours': 'bg-amber-light text-amber-dark',
+  'À lire': 'bg-cyan-light text-cyan-dark', 'Abandonné': 'bg-red-50 text-red-600',
+}
+const COVERS = 8
+function coverIdx(t: string) { let h=0; for (const c of t) h=(h*31+c.charCodeAt(0))&0xfffffff; return h%COVERS }
+
+function LibraryContent() {
+  const supabase = createClient()
+  const toast = useToast()
+
+  const [books, setBooks] = useState<Book[]>([])
+  const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<BookStatus | ''>('')
+  const [sortBy, setSortBy] = useState<'date_added'|'title'|'author'|'rating'>('date_added')
+  const [showFilters, setShowFilters] = useState(false)
+
+  const [showAdd, setShowAdd] = useState(false)
+  const [editBook, setEditBook] = useState<Book | null>(null)
+  const [detailBook, setDetailBook] = useState<Book | null>(null)
+
+  const fetch = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    let q = supabase.from('books').select('*').eq('user_id', user.id)
+    if (statusFilter) q = q.eq('status', statusFilter)
+    if (sortBy === 'rating') q = q.order('rating', { ascending: false })
+    else if (sortBy === 'title') q = q.order('title')
+    else if (sortBy === 'author') q = q.order('author')
+    else q = q.order('date_added', { ascending: false })
+    const { data } = await q
+    setBooks(data || [])
+    setLoading(false)
+  }, [statusFilter, sortBy])
+
+  useEffect(() => { fetch() }, [fetch])
+
+  const filtered = books.filter(b =>
+    !query || [b.title, b.author, b.genre||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
+  )
+
+  const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: books.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
+
+  async function addBook(data: Partial<Book>) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { error } = await supabase.from('books').insert({ ...data, user_id: user.id })
+    if (error) { toast('Erreur lors de l\'ajout', 'error'); return }
+    toast('Livre ajouté ! 📚', 'success')
+    setShowAdd(false); fetch()
+  }
+
+  async function updateBook(id: string, data: Partial<Book>) {
+    const { error } = await supabase.from('books').update(data).eq('id', id)
+    if (error) { toast('Erreur', 'error'); return }
+    toast('Mis à jour !', 'success')
+    setEditBook(null); fetch()
+  }
+
+  async function deleteBook(id: string) {
+    if (!confirm('Supprimer ce livre ?')) return
+    await supabase.from('books').delete().eq('id', id)
+    toast('Supprimé', 'info'); fetch()
+  }
+
+  async function markRead(id: string) {
+    await supabase.from('books').update({ status: 'Lu' }).eq('id', id)
+    toast('Marqué comme lu ✅', 'success'); fetch()
+  }
+
+  return (
+    <div className="space-y-4">
+
+      {/* Status pills */}
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+        <button onClick={() => setStatusFilter('')}
+          className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
+            statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+          }`}>
+          Tous · {books.length}
+        </button>
+        {STATUSES.map(s => (
+          <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+            className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
+              statusFilter === s ? `${STATUS_BG[s]} shadow-card ring-2 ring-offset-1 ring-current` : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+            }`}>
+            {STATUS_EMOJI[s]} {s} · {counts[s] || 0}
+          </button>
+        ))}
+      </div>
+
+      {/* Search row */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un livre…"
+            className="input pl-10 pr-9 py-2.5 text-sm" />
+          {query && (
+            <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X size={15} className="text-gray-400" />
+            </button>
+          )}
+        </div>
+        <button onClick={() => setShowFilters(true)}
+          className="w-11 h-11 rounded-2xl bg-white shadow-sm flex items-center justify-center hover:shadow-card transition-all text-gray-500 hover:text-violet flex-shrink-0">
+          <SlidersHorizontal size={18} />
+        </button>
+      </div>
+
+      {/* Results info */}
+      {(query || statusFilter) && (
+        <p className="text-xs font-bold text-gray-400">
+          {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
+          {statusFilter ? ` · ${statusFilter}` : ''}
+        </p>
+      )}
+
+      {/* Book list */}
+      {loading ? (
+        <div className="space-y-3">
+          {[1,2,3].map(i => (
+            <div key={i} className="card flex gap-3 p-3.5 animate-pulse">
+              <div className="w-[52px] h-[72px] rounded-xl bg-gray-100 flex-shrink-0" />
+              <div className="flex-1 space-y-2 py-1">
+                <div className="h-4 bg-gray-100 rounded-full w-3/4" />
+                <div className="h-3 bg-gray-100 rounded-full w-1/2" />
+                <div className="h-6 bg-gray-100 rounded-full w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="card p-10 text-center">
+          <div className="text-5xl mb-3 animate-float inline-block">{books.length === 0 ? '📚' : '🔍'}</div>
+          <p className="font-black text-lg text-ink">{books.length === 0 ? 'Bibliothèque vide !' : 'Aucun résultat'}</p>
+          <p className="text-sm text-gray-400 mt-1">{books.length === 0 ? 'Ajoutez votre premier livre ✨' : 'Essayez un autre filtre'}</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {filtered.map(book => (
+            <BookCard key={book.id} book={book}
+              onClick={() => setDetailBook(book)}
+              onEdit={e => { e.stopPropagation(); setEditBook(book) }}
+              onDelete={e => { e.stopPropagation(); deleteBook(book.id) }}
+              onMarkRead={e => { e.stopPropagation(); markRead(book.id) }}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* FAB */}
+      <button onClick={() => setShowAdd(true)}
+        className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-br from-violet to-pink text-white shadow-glow flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
+        <Plus size={28} />
+      </button>
+
+      {/* Sheets */}
+      <BottomSheet open={showAdd} onClose={() => setShowAdd(false)} title="Ajouter un livre">
+        <BookForm onSave={addBook} onCancel={() => setShowAdd(false)} />
+      </BottomSheet>
+
+      <BottomSheet open={!!editBook} onClose={() => setEditBook(null)} title="Modifier">
+        {editBook && <BookForm initial={editBook} onSave={d => updateBook(editBook.id, d)} onCancel={() => setEditBook(null)} />}
+      </BottomSheet>
+
+      <BottomSheet open={!!detailBook} onClose={() => setDetailBook(null)}>
+        {detailBook && <BookDetail book={detailBook} onEdit={() => { setEditBook(detailBook); setDetailBook(null) }} />}
+      </BottomSheet>
+
+      {/* Sort/filter sheet */}
+      <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title="Trier par">
+        <div className="space-y-2 pb-2">
+          {([['date_added','📅 Plus récent'],['title','🔤 Titre'],['author','👤 Auteur'],['rating','⭐ Note']] as const).map(([v, label]) => (
+            <button key={v} onClick={() => { setSortBy(v); setShowFilters(false) }}
+              className={`w-full text-left px-4 py-3 rounded-2xl font-bold text-sm transition-colors ${
+                sortBy === v ? 'bg-violet-light text-violet' : 'bg-gray-50 hover:bg-gray-100'
+              }`}>
+              {label} {sortBy === v && '✓'}
+            </button>
+          ))}
+        </div>
+      </BottomSheet>
+    </div>
+  )
+}
+
+function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
+  const COVERS = 8
+  function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%COVERS }
+  const STATUS_CHIP: Record<BookStatus, string> = { 'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab' }
+
+  return (
+    <div className="space-y-5 pb-4">
+      <div className="flex gap-4 items-start">
+        {book.cover_url
+          ? <Image src={book.cover_url} alt={book.title} width={88} height={124} className="rounded-2xl object-cover shadow-float flex-shrink-0" />
+          : <div className={`cover-${coverIdx(book.title)} w-22 h-[124px] rounded-2xl flex items-center justify-center text-4xl flex-shrink-0 shadow-float`} style={{width:88}}>📖</div>
+        }
+        <div className="flex-1 pt-1">
+          <h2 className="font-black text-xl text-ink leading-tight">{book.title}</h2>
+          <p className="text-gray-500 font-semibold mt-1">{book.author}</p>
+          {book.series_name && (
+            <span className="inline-block mt-2 text-xs font-bold text-violet bg-violet-light px-3 py-1 rounded-full">
+              {book.series_name}{book.series_number ? ` #${book.series_number}` : ''}
+            </span>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className={(STATUS_CHIP as any)[book.status]}>{book.status}</span>
+            {book.rating > 0 && <span className="text-sm">{'⭐'.repeat(book.rating)}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Meta grid */}
+      <div className="grid grid-cols-2 gap-2">
+        {[['Genre',book.genre],['Année',book.year],['Pages',book.pages&&`${book.pages} pages`],['Éditeur',book.publisher],['ISBN',book.isbn]].filter(([,v])=>v).map(([k,v])=>(
+          <div key={k as string} className="bg-bg-base rounded-2xl p-3">
+            <p className="text-[10px] font-black text-gray-400 uppercase">{k}</p>
+            <p className="font-bold text-sm text-ink mt-0.5">{v}</p>
+          </div>
+        ))}
+      </div>
+
+      {book.notes && (
+        <div className="bg-amber-light rounded-2xl p-4">
+          <p className="text-[10px] font-black text-amber-dark uppercase mb-1.5">📝 Notes</p>
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{book.notes}</p>
+        </div>
+      )}
+
+      <button onClick={onEdit} className="btn btn-primary w-full py-3">✏️ Modifier</button>
+    </div>
+  )
+}
+
+export default function LibraryPage() {
+  return <ToastProvider><AppLayout><LibraryContent /></AppLayout></ToastProvider>
+}
