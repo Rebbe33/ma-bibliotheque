@@ -24,17 +24,18 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
   const path = request.nextUrl.pathname
 
-  // Redirect unauthenticated users away from protected routes
+  // Ne pas toucher au callback OAuth
+  if (path.startsWith('/auth/callback')) return response
+
   const protectedRoutes = ['/library', '/wishlist', '/stats', '/settings']
-  if (!user && protectedRoutes.some(r => path.startsWith(r))) {
+  if (!session && protectedRoutes.some(r => path.startsWith(r))) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
-  // Redirect authenticated users away from auth page
-  if (user && path === '/auth') {
+  if (session && path === '/auth') {
     return NextResponse.redirect(new URL('/library', request.url))
   }
 
