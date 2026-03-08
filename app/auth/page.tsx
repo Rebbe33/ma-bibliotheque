@@ -33,13 +33,19 @@ export default function AuthPage() {
     setLoading(false)
   }
 
-  async function handleGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` }
-    })
-    if (error) setError(error.message)
-  }
+ async function handleGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      }
+    }
+  })
+  if (error) setError(error.message)
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{
