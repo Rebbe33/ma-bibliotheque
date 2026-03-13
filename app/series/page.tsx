@@ -26,7 +26,6 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
 
   return (
     <div className="space-y-4 pb-4">
-      {/* Renommer */}
       <div>
         <label className="block text-xs font-black text-gray-500 mb-1.5">NOM DE LA SÉRIE</label>
         <div className="flex gap-2">
@@ -35,8 +34,6 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
             className="btn btn-primary px-4 disabled:opacity-50">✓</button>
         </div>
       </div>
-
-      {/* Liste des tomes */}
       <div>
         <label className="block text-xs font-black text-gray-500 mb-2">TOMES ({series.books.length})</label>
         <div className="space-y-2">
@@ -56,8 +53,6 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
                   <Trash2 size={13}/>
                 </button>
               </div>
-
-              {/* Statut + numéro de tome */}
               <div className="flex gap-2">
                 <select value={book.status}
                   onChange={e => onUpdateBook(book.id, { status: e.target.value as BookStatus })}
@@ -66,11 +61,8 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
                 </select>
                 <input type="number" value={book.series_number || ''}
                   onChange={e => onUpdateBook(book.id, { series_number: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  placeholder="Tome #"
-                  className="input text-xs py-1.5 w-24 text-center"/>
+                  placeholder="Tome #" className="input text-xs py-1.5 w-24 text-center"/>
               </div>
-
-              {/* Note */}
               <div className="flex gap-1">
                 {[1,2,3,4,5].map(n => (
                   <button key={n} onClick={() => onUpdateBook(book.id, { rating: book.rating === n ? 0 : n })}
@@ -96,7 +88,6 @@ function SeriesContent() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [editingSeries, setEditingSeries] = useState<Series | null>(null)
 
-  // Création
   const [showCreate, setShowCreate] = useState(false)
   const [mode, setMode] = useState<'one'|'bulk'>('bulk')
   const [seriesName, setSeriesName] = useState('')
@@ -195,6 +186,28 @@ function SeriesContent() {
     setResults([]); setSearchQuery(''); setAdding(false); loadSeries()
   }
 
+  async function addToWishlist(book: GoogleBookWithMeta) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('wishlist').insert({
+      user_id: user.id,
+      title: book.title,
+      author: book.authors.join(', '),
+      cover_url: getBestCover(book.imageLinks),
+      google_books_id: book.id,
+      year: extractYear(book.publishedDate),
+      priority: 'Moyenne',
+    })
+    toast(`"${book.title}" ajouté aux souhaits ✨`, 'success')
+  }
+
+  async function addSelectedToWishlist() {
+    const selected = results.filter(b => b.checked)
+    if (!selected.length) return
+    for (const book of selected) await addToWishlist(book)
+    toast(`${selected.length} livre${selected.length>1?'s':''} ajouté${selected.length>1?'s':''} aux souhaits ✨`, 'success')
+  }
+
   async function updateSeriesName(oldName: string, newName: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !newName.trim()) return
@@ -206,7 +219,6 @@ function SeriesContent() {
 
   async function updateBookInSeries(bookId: string, data: Partial<Book>) {
     await supabase.from('books').update(data).eq('id', bookId)
-    // Mettre à jour localement pour éviter de recharger
     setSeries(s => s.map(serie => ({
       ...serie,
       books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
@@ -218,21 +230,6 @@ function SeriesContent() {
     await supabase.from('books').update({ series_name: null, series_number: null }).eq('id', bookId)
     toast('Tome retiré', 'info'); loadSeries()
   }
-
-  async function addToWishlist(book: GoogleBookWithMeta) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  await supabase.from('wishlist').insert({
-    user_id: user.id,
-    title: book.title,
-    author: book.authors.join(', '),
-    cover_url: getBestCover(book.imageLinks),
-    google_books_id: book.id,
-    year: extractYear(book.publishedDate),
-    priority: 'Moyenne',
-  })
-  toast(`"${book.title}" ajouté aux souhaits ✨`, 'success')
-}
 
   function reset() {
     setShowCreate(false); setSeriesName(''); setSearchQuery('')
@@ -266,7 +263,7 @@ function SeriesContent() {
           <div>
             <label className="block text-xs font-black text-ink mb-1.5">MODE D'AJOUT</label>
             <div className="flex p-1 bg-white rounded-2xl">
-              {([['bulk','Layers','En masse'],['one','List','Tome par tome']] as const).map(([m, , label]) => (
+              {([['bulk','En masse'],['one','Tome par tome']] as const).map(([m, label]) => (
                 <button key={m} onClick={() => { setMode(m as 'bulk'|'one'); setResults([]) }}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl font-black text-sm transition-all ${
                     mode===m ? 'bg-violet text-white shadow-sm' : 'text-gray-500 hover:text-violet'
@@ -277,12 +274,12 @@ function SeriesContent() {
             </div>
             <p className="text-[11px] text-gray-500 font-semibold mt-1.5 px-1">
               {mode==='bulk'
-                ? '🔍 Cherchez tous les tomes, cochez et numérotez avant d\'ajouter'
+                ? "🔍 Cherchez tous les tomes, cochez et numérotez avant d'ajouter"
                 : '🔍 Cherchez et ajoutez chaque tome un par un'}
             </p>
           </div>
 
-          {/* Source + recherche */}
+          {/* Source toggle */}
           <div className="flex p-1 bg-white rounded-2xl">
             {([['google','🔍 Google Books'],['openlibrary','📖 Open Library']] as const).map(([s, label]) => (
               <button key={s} onClick={() => { setSource(s); setResults([]); setPage(0) }}
@@ -292,6 +289,7 @@ function SeriesContent() {
             ))}
           </div>
 
+          {/* Barre de recherche */}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"/>
@@ -306,7 +304,7 @@ function SeriesContent() {
             </button>
           </div>
 
-          {/* Résultats */}
+          {/* Shimmer */}
           {searching && (
             <div className="space-y-2">
               {[1,2,3].map(i=>(
@@ -321,8 +319,11 @@ function SeriesContent() {
             </div>
           )}
 
+          {/* Résultats */}
           {!searching && results.length > 0 && (
             <div className="space-y-2">
+
+              {/* Header bulk */}
               {mode==='bulk' && (
                 <div className="flex items-center justify-between px-1">
                   <button onClick={() => { const all=results.every(b=>b.checked); setResults(r=>r.map(b=>({...b,checked:!all}))) }}
@@ -333,6 +334,7 @@ function SeriesContent() {
                 </div>
               )}
 
+              {/* Liste des résultats */}
               <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
                 {results.map(book => {
                   const cover = getBestCover(book.imageLinks)
@@ -342,6 +344,8 @@ function SeriesContent() {
                       mode==='bulk' && book.checked ? 'bg-violet-light ring-2 ring-violet ring-offset-1'
                       : mode==='bulk' ? 'bg-white/70 hover:bg-white' : 'bg-white'
                     }`}>
+
+                      {/* Checkbox bulk */}
                       {mode==='bulk' && (
                         <button onClick={() => setResults(r=>r.map(b=>b.id===book.id?{...b,checked:!b.checked}:b))}
                           className={`w-5 h-5 rounded-lg flex-shrink-0 flex items-center justify-center border-2 transition-all ${
@@ -350,35 +354,46 @@ function SeriesContent() {
                           {book.checked && <Check size={12} className="text-white" strokeWidth={3}/>}
                         </button>
                       )}
+
+                      {/* Couverture */}
                       {cover
                         ? <Image src={cover} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0"/>
                         : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                       }
+
+                      {/* Infos */}
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
                         <p className="text-[11px] text-gray-500">{book.authors.join(', ')}</p>
                         {year && <p className="text-[11px] text-gray-400">{year}{book.pageCount?` · ${book.pageCount}p`:''}</p>}
                       </div>
+
+                      {/* Numéro de tome */}
                       <input type="number" value={book.tomeNumber}
                         onChange={e => setResults(r=>r.map(b=>b.id===book.id?{...b,tomeNumber:e.target.value}:b))}
                         placeholder="T." className="w-14 text-center border-2 border-gray-200 rounded-xl text-xs font-black py-1.5 focus:border-violet outline-none flex-shrink-0"/>
-                      {mode==='one' && (
-                        <button onClick={() => addTome(book)}
-                          className="w-8 h-8 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet-dark transition-colors flex-shrink-0">
-                          <Plus size={16}/>
+
+                      {/* Boutons action */}
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        {mode==='one' && (
+                          <button onClick={() => addTome(book)}
+                            className="w-8 h-8 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet-dark transition-colors"
+                            title="Ajouter à la série">
+                            <Plus size={16}/>
+                          </button>
+                        )}
+                        <button onClick={() => addToWishlist(book)}
+                          className="w-8 h-8 rounded-xl bg-pink-light text-pink flex items-center justify-center hover:bg-pink hover:text-white transition-colors"
+                          title="Ajouter à mes souhaits">
+                          ♥
                         </button>
-                      {/* Bouton wishlist — toujours visible */}
-<button onClick={() => addToWishlist(book)}
-  className="w-8 h-8 rounded-xl bg-pink-light text-pink flex items-center justify-center hover:bg-pink hover:text-white transition-colors flex-shrink-0"
-  title="Ajouter à mes souhaits">
-  ♥
-</button>
-                      )}
+                      </div>
                     </div>
                   )
                 })}
               </div>
 
+              {/* Charger plus */}
               {hasMore && (
                 <button onClick={() => doSearch(searchQuery, page+1)} disabled={loadingMore}
                   className="w-full py-2.5 rounded-2xl bg-white/60 hover:bg-white font-black text-xs text-gray-500 transition-colors disabled:opacity-50">
@@ -386,20 +401,20 @@ function SeriesContent() {
                 </button>
               )}
 
+              {/* Boutons bulk */}
               {mode==='bulk' && (
-                <button onClick={addSelected} disabled={selectedCount===0||adding||!seriesName.trim()}
-                  className="btn btn-primary w-full py-3 disabled:opacity-50">
-                  {adding ? '⏳ Ajout…' : <><Plus size={15}/> Ajouter {selectedCount} tome{selectedCount>1?'s':''}</>}
-                </button>
-              {mode==='bulk' && selectedCount > 0 && (
-  <button onClick={async () => {
-    const selected = results.filter(b => b.checked)
-    for (const book of selected) await addToWishlist(book)
-    toast(`${selected.length} livre${selected.length>1?'s':''} ajouté${selected.length>1?'s':''} aux souhaits ✨`, 'success')
-  }} className="btn w-full py-2.5 bg-pink-light text-pink hover:bg-pink hover:text-white transition-colors font-black text-sm rounded-2xl">
-    ♥ Ajouter {selectedCount} à mes souhaits
-  </button>
-)}
+                <div className="space-y-2">
+                  <button onClick={addSelected} disabled={selectedCount===0||adding||!seriesName.trim()}
+                    className="btn btn-primary w-full py-3 disabled:opacity-50">
+                    {adding ? '⏳ Ajout…' : <><Plus size={15}/> Ajouter {selectedCount} tome{selectedCount>1?'s':''} à la série</>}
+                  </button>
+                  {selectedCount > 0 && (
+                    <button onClick={addSelectedToWishlist}
+                      className="w-full py-2.5 rounded-2xl bg-pink-light text-pink hover:bg-pink hover:text-white transition-colors font-black text-sm">
+                      ♥ Ajouter {selectedCount} à mes souhaits
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -444,6 +459,7 @@ function SeriesContent() {
             return (
               <div key={name} className="card overflow-hidden">
                 <div className="flex items-center gap-3 p-4">
+
                   {/* Cover stack */}
                   <div className="relative w-12 h-16 flex-shrink-0 cursor-pointer" onClick={() => setExpanded(isOpen?null:name)}>
                     {books.slice(0,3).map((b,i)=>(
