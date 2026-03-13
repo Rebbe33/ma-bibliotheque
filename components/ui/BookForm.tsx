@@ -10,6 +10,7 @@ interface Props {
   initial?: Partial<Book>
   onSave: (data: Partial<Book>) => Promise<void>
   onCancel: () => void
+  onAddToWishlist?: (book: GoogleBook) => void
 }
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
@@ -89,7 +90,7 @@ export default function BookForm({ initial = {}, onSave, onCancel }: Props) {
 
   if (step === 'search') return (
     <div>
-      <BookSearch onSelect={fromGoogle} onManual={() => setStep('form')} />
+      <BookSearch onSelect={fromGoogle} onManual={() => setStep('form')} onAddToWishlist={onAddToWishlist} />
       <button onClick={onCancel} className="mt-2 btn btn-ghost w-full">Annuler</button>
     </div>
   )
