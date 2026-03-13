@@ -90,17 +90,26 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div className="relative">
-  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-  <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Ton pseudo" className="input pl-11" />
+  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+  <input type="text" value={username} onChange={e => setUsername(e.target.value)}
+    placeholder="Ton pseudo"
+    style={{ paddingLeft: '2.25rem' }}
+    className="input" />
 </div>
             )}
             <div className="relative">
-  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="input pl-11" />
+  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+    placeholder="Email" required
+    style={{ paddingLeft: '2.25rem' }}
+    className="input" />
 </div>
 <div className="relative">
-  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" required minLength={6} className="input pl-11" />
+  <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+    placeholder="Mot de passe" required minLength={6}
+    style={{ paddingLeft: '2.25rem' }}
+    className="input" />
 </div>
 
             {error   && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm font-semibold">⚠️ {error}</div>}
