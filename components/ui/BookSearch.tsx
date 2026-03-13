@@ -100,6 +100,11 @@ export default function BookSearch({ onSelect, onManual }: Props) {
                     {year && <span className="text-[11px] bg-amber-light text-amber-dark font-bold px-2 py-0.5 rounded-full">{year}</span>}
                     {book.pageCount && <span className="text-[11px] text-gray-400">{book.pageCount} p.</span>}
                     {book.publisher && <span className="text-[11px] text-gray-400 truncate max-w-[120px]">{book.publisher}</span>}
+                    {book.seriesInfo?.shortSeriesBookTitle && (
+  <span className="text-[11px] bg-violet-light text-violet-dark font-bold px-2 py-0.5 rounded-full">
+    📚 Série : {book.seriesInfo.shortSeriesBookTitle}
+  </span>
+)}
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-gray-300 flex-shrink-0" />
