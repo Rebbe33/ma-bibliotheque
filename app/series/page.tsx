@@ -219,6 +219,21 @@ function SeriesContent() {
     toast('Tome retiré', 'info'); loadSeries()
   }
 
+  async function addToWishlist(book: GoogleBookWithMeta) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase.from('wishlist').insert({
+    user_id: user.id,
+    title: book.title,
+    author: book.authors.join(', '),
+    cover_url: getBestCover(book.imageLinks),
+    google_books_id: book.id,
+    year: extractYear(book.publishedDate),
+    priority: 'Moyenne',
+  })
+  toast(`"${book.title}" ajouté aux souhaits ✨`, 'success')
+}
+
   function reset() {
     setShowCreate(false); setSeriesName(''); setSearchQuery('')
     setResults([]); setMode('bulk'); setPage(0)
@@ -352,6 +367,12 @@ function SeriesContent() {
                           className="w-8 h-8 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet-dark transition-colors flex-shrink-0">
                           <Plus size={16}/>
                         </button>
+                      {/* Bouton wishlist — toujours visible */}
+<button onClick={() => addToWishlist(book)}
+  className="w-8 h-8 rounded-xl bg-pink-light text-pink flex items-center justify-center hover:bg-pink hover:text-white transition-colors flex-shrink-0"
+  title="Ajouter à mes souhaits">
+  ♥
+</button>
                       )}
                     </div>
                   )
@@ -370,6 +391,15 @@ function SeriesContent() {
                   className="btn btn-primary w-full py-3 disabled:opacity-50">
                   {adding ? '⏳ Ajout…' : <><Plus size={15}/> Ajouter {selectedCount} tome{selectedCount>1?'s':''}</>}
                 </button>
+              {mode==='bulk' && selectedCount > 0 && (
+  <button onClick={async () => {
+    const selected = results.filter(b => b.checked)
+    for (const book of selected) await addToWishlist(book)
+    toast(`${selected.length} livre${selected.length>1?'s':''} ajouté${selected.length>1?'s':''} aux souhaits ✨`, 'success')
+  }} className="btn w-full py-2.5 bg-pink-light text-pink hover:bg-pink hover:text-white transition-colors font-black text-sm rounded-2xl">
+    ♥ Ajouter {selectedCount} à mes souhaits
+  </button>
+)}
               )}
             </div>
           )}
