@@ -40,6 +40,7 @@ export default function BookSearch({ onSelect, onManual }: Props) {
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && doSearch()}
           placeholder="Titre, auteur, ISBN…"
+          style={{ paddingLeft: '2.25rem' }}
           className="input pl-10 pr-10"
           autoFocus
         />
