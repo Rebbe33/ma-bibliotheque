@@ -61,7 +61,7 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
     !query || [b.title, b.author, b.genre||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
   )
 
-  const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: books.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
+  const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
 
   async function addBook(data: Partial<Book>) {
     const { data: { user } } = await supabase.auth.getUser()
