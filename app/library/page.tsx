@@ -36,18 +36,24 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
   const [detailBook, setDetailBook] = useState<Book | null>(null)
 
   const fetch = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    let q = supabase.from('books').select('*').eq('user_id', user.id)
-    if (statusFilter) q = q.eq('status', statusFilter)
-    if (sortBy === 'rating') q = q.order('rating', { ascending: false })
-    else if (sortBy === 'title') q = q.order('title')
-    else if (sortBy === 'author') q = q.order('author')
-    else q = q.order('date_added', { ascending: false })
-    const { data } = await q
-    setBooks(data || [])
-    setLoading(false)
-  }, [statusFilter, sortBy])
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Tous les livres pour les compteurs
+  const { data: all } = await supabase.from('books').select('*').eq('user_id', user.id)
+  setAllBooks(all || [])
+
+  // Livres filtrés pour l'affichage
+  let q = supabase.from('books').select('*').eq('user_id', user.id)
+  if (statusFilter) q = q.eq('status', statusFilter)
+  if (sortBy === 'rating') q = q.order('rating', { ascending: false })
+  else if (sortBy === 'title') q = q.order('title')
+  else if (sortBy === 'author') q = q.order('author')
+  else q = q.order('date_added', { ascending: false })
+  const { data } = await q
+  setBooks(data || [])
+  setLoading(false)
+}, [statusFilter, sortBy])
 
   useEffect(() => { fetch() }, [fetch])
 
