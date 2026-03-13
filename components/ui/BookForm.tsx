@@ -10,7 +10,7 @@ interface Props {
   initial?: Partial<Book>
   onSave: (data: Partial<Book>) => Promise<void>
   onCancel: () => void
-  onAddToWishlist?: (book: GoogleBook) => void
+  onAddToWishlist?: (book: GoogleBook) => void  // ← ajouter cette ligne
 }
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
