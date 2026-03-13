@@ -4,6 +4,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   const page = parseInt(searchParams.get('page') || '0')
+  const lang = searchParams.get('lang') || 'fr'
+if (source === 'openlibrary') return NextResponse.json(await searchOpenLibrary(query, page))
+return NextResponse.json(await searchGoogle(query, page, lang))
   const source = searchParams.get('source') || 'google'
   if (!query) return NextResponse.json([])
 
@@ -20,7 +23,7 @@ async function searchGoogle(query: string, page = 0) {
     maxResults: '20',
     startIndex: String(page * 20),
     printType: 'books',
-    langRestrict: 'fr',
+    ...(lang !== 'all' ? { langRestrict: lang } : {}),
     ...(key ? { key } : {}),
   })
   try {
