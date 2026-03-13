@@ -96,11 +96,11 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
       {/* Status pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
         <button onClick={() => setStatusFilter('')}
-          className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
-            statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
-          }`}>
-          Tous · {books.length}
-        </button>
+  className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
+    statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+  }`}>
+  Tous · {allBooks.length}
+</button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
             className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
