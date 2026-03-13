@@ -24,6 +24,7 @@ function LibraryContent() {
   const toast = useToast()
 
   const [books, setBooks] = useState<Book[]>([])
+const [allBooks, setAllBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<BookStatus | ''>('')
