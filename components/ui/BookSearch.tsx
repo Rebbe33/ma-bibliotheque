@@ -22,6 +22,7 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
   const [hasMore, setHasMore] = useState(false)
   const [source, setSource] = useState<'google' | 'openlibrary'>('google')
   const inputRef = useRef<HTMLInputElement>(null)
+  const [langFr, setLangFr] = useState(true)
 
   async function doSearch(q = query, p = 0, src = source) {
     if (!q.trim()) return
