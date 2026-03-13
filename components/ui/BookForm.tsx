@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<BookStatus, string> = {
   'Abandonné': 'bg-red-50 text-red-700 ring-red-200',
 }
 
-export default function BookForm({ initial = {}, onSave, onCancel }: Props) {
+export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishlist }: Props) {
   const [step, setStep] = useState<'search' | 'form'>(initial.title ? 'form' : 'search')
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
