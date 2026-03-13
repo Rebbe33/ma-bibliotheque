@@ -20,6 +20,7 @@ async function searchGoogle(query: string, page = 0) {
     maxResults: '20',
     startIndex: String(page * 20),
     printType: 'books',
+    langRestrict: 'fr',
     ...(key ? { key } : {}),
   })
   try {
