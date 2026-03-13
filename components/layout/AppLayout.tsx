@@ -2,6 +2,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { BookOpen, Heart, BarChart2, Settings } from 'lucide-react'
+import { BookOpen, Heart, BarChart2, Settings, Library } from 'lucide-react'
 
 const NAV = [
   { href: '/library',  label: 'Livres',   icon: BookOpen,  },
