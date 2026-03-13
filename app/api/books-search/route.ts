@@ -4,19 +4,15 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   const page = parseInt(searchParams.get('page') || '0')
-  const lang = searchParams.get('lang') || 'fr'
-if (source === 'openlibrary') return NextResponse.json(await searchOpenLibrary(query, page))
-return NextResponse.json(await searchGoogle(query, page, lang))
   const source = searchParams.get('source') || 'google'
-  if (!query) return NextResponse.json([])
+  const lang = searchParams.get('lang') || 'fr'
 
-  if (source === 'openlibrary') {
-    return NextResponse.json(await searchOpenLibrary(query, page))
-  }
-  return NextResponse.json(await searchGoogle(query, page))
+  if (!query) return NextResponse.json([])
+  if (source === 'openlibrary') return NextResponse.json(await searchOpenLibrary(query, page))
+  return NextResponse.json(await searchGoogle(query, page, lang))
 }
 
-async function searchGoogle(query: string, page = 0) {
+async function searchGoogle(query: string, page = 0, lang = 'fr') {
   const key = process.env.GOOGLE_BOOKS_KEY
   const params = new URLSearchParams({
     q: query,
