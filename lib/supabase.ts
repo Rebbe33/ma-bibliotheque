@@ -10,7 +10,6 @@ export function createClient() {
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true,
-        storageKey: 'ma-bibliotheque-auth',
       }
     }
   )
