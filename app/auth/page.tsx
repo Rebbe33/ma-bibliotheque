@@ -90,9 +90,9 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (
               <div className="relative">
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Ton pseudo" className="input pl-10" />
-              </div>
+  <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+  <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Ton pseudo" className="input pl-11" />
+</div>
             )}
             <div className="relative">
   <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
