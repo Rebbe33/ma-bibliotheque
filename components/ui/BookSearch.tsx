@@ -17,13 +17,16 @@ export default function BookSearch({ onSelect, onManual }: Props) {
   const [searched, setSearched] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function doSearch(q = query) {
-    if (!q.trim()) return
-    setLoading(true); setSearched(true)
-    try { setResults(await searchGoogleBooks(q)) }
-    catch { setResults([]) }
-    setLoading(false)
-  }
+ async function doSearch(q = query) {
+  if (!q.trim()) return
+  setLoading(true); setSearched(true)
+  try {
+    const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}`)
+    const data = await res.json()
+    setResults(data)
+  } catch { setResults([]) }
+  setLoading(false)
+}
 
   return (
     <div className="space-y-3">
