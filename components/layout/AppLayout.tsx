@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase'
 import { BookOpen, Heart, BarChart2, Settings } from 'lucide-react'
 
 const NAV = [
-  { href: '/library',  label: 'Livres',   icon: BookOpen,  active: 'text-violet-DEFAULT', bg: 'bg-violet-light', dot: 'bg-violet' },
-  { href: '/wishlist', label: 'Souhaits', icon: Heart,     active: 'text-pink-DEFAULT',   bg: 'bg-pink-light',   dot: 'bg-pink' },
-  { href: '/stats',    label: 'Stats',    icon: BarChart2, active: 'text-cyan-DEFAULT',   bg: 'bg-cyan-light',   dot: 'bg-cyan' },
-  { href: '/settings', label: 'Réglages', icon: Settings,  active: 'text-lime-DEFAULT',   bg: 'bg-lime-light',   dot: 'bg-lime' },
+  { href: '/library',  label: 'Livres',   icon: BookOpen,  },
+  { href: '/series',   label: 'Séries',   icon: Library,   },
+  { href: '/wishlist', label: 'Souhaits', icon: Heart,     },
+  { href: '/stats',    label: 'Stats',    icon: BarChart2, },
+  { href: '/settings', label: 'Réglages', icon: Settings,  },
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
