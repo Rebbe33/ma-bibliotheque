@@ -135,7 +135,7 @@ function WishlistContent() {
       {/* Search */}
       <div className="relative">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher un souhait…" className="input pl-10 pr-9 py-2.5 text-sm" />
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher un souhait…" style={{ paddingLeft: '2.25rem' }} className="input pl-10 pr-9 py-2.5 text-sm" />
         {query && <button onClick={()=>setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X size={15} className="text-gray-400"/></button>}
       </div>
 
