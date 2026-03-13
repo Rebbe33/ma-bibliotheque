@@ -95,13 +95,13 @@ export default function AuthPage() {
               </div>
             )}
             <div className="relative">
-              <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="input pl-10" />
-            </div>
-            <div className="relative">
-              <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" required minLength={6} className="input pl-10" />
-            </div>
+  <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" required className="input pl-11" />
+</div>
+<div className="relative">
+  <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mot de passe" required minLength={6} className="input pl-11" />
+</div>
 
             {error   && <div className="bg-red-50 text-red-600 rounded-2xl p-3 text-sm font-semibold">⚠️ {error}</div>}
             {success && <div className="bg-green-50 text-green-600 rounded-2xl p-3 text-sm font-semibold">{success}</div>}
