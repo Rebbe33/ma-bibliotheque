@@ -30,7 +30,7 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
     else setLoadingMore(true)
 
     try {
-      const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}`)
+      const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}&lang=${langFr ? 'fr' : 'all'}`)
       const data: GoogleBook[] = await res.json()
 
       // Trier par pertinence — les titres qui correspondent exactement en premier
@@ -58,6 +58,17 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
   return (
     <div className="space-y-3">
       {/* Source toggle */}
+      <div className="flex items-center justify-between px-1">
+  <span className="text-xs font-black text-gray-500">Langue</span>
+  <div className="flex p-0.5 bg-gray-100 rounded-xl">
+    {([['fr','🇫🇷 Français'],['all','🌍 Toutes']] as const).map(([l, label]) => (
+      <button key={l} onClick={() => { setLangFr(l==='fr'); setResults([]); setPage(0) }}
+        className={`px-3 py-1 rounded-xl font-black text-xs transition-all ${
+          (langFr ? l==='fr' : l==='all') ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+        }`}>{label}</button>
+    ))}
+  </div>
+</div>
       <div className="flex p-1 bg-gray-100 rounded-2xl">
         {([['google', '🔍 Google Books'], ['openlibrary', '📖 Open Library']] as const).map(([s, label]) => (
           <button key={s} onClick={() => changeSource(s)}
