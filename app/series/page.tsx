@@ -32,7 +32,7 @@ function SeriesContent() {
   const [searched, setSearched] = useState(false)
   const [adding, setAdding] = useState(false)
 
-  const fetch = useCallback(async () => {
+  const loadSeries = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data } = await supabase
@@ -53,7 +53,7 @@ function SeriesContent() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { loadSeries() }, [loadSeries])
 
   const filtered = series.filter(s =>
     !query || s.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -64,7 +64,7 @@ function SeriesContent() {
     if (!searchQuery.trim()) return
     setSearching(true); setSearched(true)
     try {
-      const res = await fetch(`/api/books-search?q=${encodeURIComponent('series:' + searchQuery)}`)
+      const res = await window.fetch(`/api/books-search?q=${encodeURIComponent('series:' + searchQuery)}`)
       const data = await res.json()
       // Garder uniquement les livres qui ont un numéro de série
       const withSeries = data
@@ -115,7 +115,7 @@ function SeriesContent() {
     setSearchQuery('')
     setSearched(false)
     setAdding(false)
-    fetch()
+    loadSeries()
   }
 
   const COVERS = 8
