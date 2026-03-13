@@ -9,6 +9,8 @@ import BookForm from '@/components/ui/BookForm'
 import BookCard from '@/components/ui/BookCard'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { Search, X, Plus, SlidersHorizontal } from 'lucide-react'
+import { getBestCover, extractYear } from '@/lib/google-books'
+import { GoogleBook } from '@/types'
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
 const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀' }
@@ -89,6 +91,22 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
     await supabase.from('books').update({ status: 'Lu' }).eq('id', id)
     toast('Marqué comme lu ✅', 'success'); fetch()
   }
+
+async function addToWishlist(googleBook: GoogleBook) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase.from('wishlist').insert({
+    user_id: user.id,
+    title: googleBook.title,
+    author: googleBook.authors.join(', '),
+    cover_url: getBestCover(googleBook.imageLinks),
+    google_books_id: googleBook.id,
+    year: extractYear(googleBook.publishedDate),
+    priority: 'Moyenne',
+  })
+  toast('Ajouté à tes souhaits ✨', 'success')
+  setShowAdd(false)
+}
 
   return (
     <div className="space-y-4">
@@ -179,7 +197,7 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
 
       {/* Sheets */}
       <BottomSheet open={showAdd} onClose={() => setShowAdd(false)} title="Ajouter un livre">
-        <BookForm onSave={addBook} onCancel={() => setShowAdd(false)} />
+        <BookForm onSave={addBook} onCancel={() => setShowAdd(false)} onAddToWishlist={addToWishlist} />
       </BottomSheet>
 
       <BottomSheet open={!!editBook} onClose={() => setEditBook(null)} title="Modifier">
