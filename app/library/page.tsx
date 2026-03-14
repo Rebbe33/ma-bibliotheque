@@ -42,11 +42,11 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
   if (!user) return
 
   // Tous les livres pour les compteurs
-  const { data: all } = await supabase.from('books').select('*').eq('user_id', user.id)
+  const { data: all } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
   setAllBooks(all || [])
 
   // Livres filtrés pour l'affichage
-  let q = supabase.from('books').select('*').eq('user_id', user.id)
+  let q = supabase.from('bibliotheque.books').select('*').eq('user_id', user.id)
   if (statusFilter) q = q.eq('status', statusFilter)
   if (sortBy === 'rating') q = q.order('rating', { ascending: false })
   else if (sortBy === 'title') q = q.order('title')
@@ -68,14 +68,14 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
   async function addBook(data: Partial<Book>) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const { error } = await supabase.from('books').insert({ ...data, user_id: user.id })
+    const { error } = await supabase.from('bibliotheque_books').insert({ ...data, user_id: user.id })
     if (error) { toast('Erreur lors de l\'ajout', 'error'); return }
     toast('Livre ajouté ! 📚', 'success')
     setShowAdd(false); fetch()
   }
 
   async function updateBook(id: string, data: Partial<Book>) {
-    const { error } = await supabase.from('books').update(data).eq('id', id)
+    const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
     if (error) { toast('Erreur', 'error'); return }
     toast('Mis à jour !', 'success')
     setEditBook(null); fetch()
@@ -83,19 +83,19 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
 
   async function deleteBook(id: string) {
     if (!confirm('Supprimer ce livre ?')) return
-    await supabase.from('books').delete().eq('id', id)
+    await supabase.from('bibliotheque_books').delete().eq('id', id)
     toast('Supprimé', 'info'); fetch()
   }
 
   async function markRead(id: string) {
-    await supabase.from('books').update({ status: 'Lu' }).eq('id', id)
+    await supabase.from('bibliotheque_books').update({ status: 'Lu' }).eq('id', id)
     toast('Marqué comme lu ✅', 'success'); fetch()
   }
 
 async function addToWishlist(googleBook: GoogleBook) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
-  await supabase.from('wishlist').insert({
+  await supabase.from('bibliotheque_wishlist').insert({
     user_id: user.id,
     title: googleBook.title,
     author: googleBook.authors.join(', '),
