@@ -104,7 +104,7 @@ function SeriesContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data } = await supabase
-      .from('books').select('*').eq('user_id', user.id)
+      .from('bibliotheque_books').select('*').eq('user_id', user.id)
       .not('series_name', 'is', null)
       .order('series_name').order('series_number')
     const grouped: Record<string, Book[]> = {}
@@ -148,7 +148,7 @@ function SeriesContent() {
     if (!seriesName.trim()) { toast('Donnez un nom à la série !', 'error'); return }
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('books').insert({
+    await supabase.from('bibliotheque_books').insert({
       user_id: user.id, title: book.title, author: book.authors.join(', '),
       genre: book.categories?.[0], year: extractYear(book.publishedDate),
       pages: book.pageCount, publisher: book.publisher,
