@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase'
 import AppLayout from '@/components/layout/AppLayout'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { Book, WishItem } from '@/types'
-import { Download, Upload, LogOut, User, BookOpen, Heart } from 'lucide-react'
+import { Download, Upload, LogOut, BookOpen, Heart } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 function SettingsContent() {
@@ -21,8 +21,8 @@ function SettingsContent() {
       setUser(user)
       if (!user) return
       const [{ count: bc }, { count: wc }] = await Promise.all([
-        supabase.from('books').select('*', { count:'exact', head:true }).eq('user_id', user.id),
-        supabase.from('wishlist').select('*', { count:'exact', head:true }).eq('user_id', user.id),
+        supabase.from('bibliotheque_books').select('*', { count:'exact', head:true }).eq('user_id', user.id),
+        supabase.from('bibliotheque_wishlist').select('*', { count:'exact', head:true }).eq('user_id', user.id),
       ])
       setBookCount(bc || 0); setWishCount(wc || 0)
     }
@@ -33,8 +33,8 @@ function SettingsContent() {
     const { data: { user: u } } = await supabase.auth.getUser()
     if (!u) return
     const [{ data: books }, { data: wishes }] = await Promise.all([
-      supabase.from('books').select('*').eq('user_id', u.id),
-      supabase.from('wishlist').select('*').eq('user_id', u.id),
+      supabase.from('bibliotheque_books').select('*').eq('user_id', u.id),
+      supabase.from('bibliotheque_wishlist').select('*').eq('user_id', u.id),
     ])
     const blob = new Blob([JSON.stringify({ version:2, exportDate:new Date().toISOString(), books, wishes }, null, 2)], { type:'application/json' })
     const d = new Date()
@@ -48,7 +48,7 @@ function SettingsContent() {
   async function exportCSV() {
     const { data: { user: u } } = await supabase.auth.getUser()
     if (!u) return
-    const { data: books } = await supabase.from('books').select('*').eq('user_id', u.id)
+    const { data: books } = await supabase.from('bibliotheque_books').select('*').eq('user_id', u.id)
     const cols = ['Titre','Auteur','Genre','Année','Statut','Pages','Éditeur','ISBN','Série','N° Série','Note','Notes']
     const rows = (books||[]).map((b:Book) => [b.title,b.author,b.genre||'',b.year||'',b.status,b.pages||'',b.publisher||'',b.isbn||'',b.series_name||'',b.series_number||'',b.rating||'',b.notes||''].map(v=>`"${String(v).replace(/"/g,'""')}"`))
     const csv = [cols.map(c=>`"${c}"`).join(','), ...rows.map(r=>r.join(','))].join('\n')
@@ -68,12 +68,12 @@ function SettingsContent() {
       const books: Book[] = Array.isArray(data) ? data : (data.books || [])
       const wishes: WishItem[] = data.wishes || []
       if (!confirm(`Importer ${books.length} livre${books.length!==1?'s':''} et ${wishes.length} souhait${wishes.length!==1?'s':''} ? Ils s'ajouteront à vos données existantes.`)) return
-      for (const b of books) { const { id, ...rest } = b; await supabase.from('books').insert({ ...rest, user_id: u.id }) }
-      for (const w of wishes) { const { id, ...rest } = w; await supabase.from('wishlist').insert({ ...rest, user_id: u.id }) }
+      for (const b of books) { const { id, ...rest } = b; await supabase.from('bibliotheque_books').insert({ ...rest, user_id: u.id }) }
+      for (const w of wishes) { const { id, ...rest } = w; await supabase.from('bibliotheque_wishlist').insert({ ...rest, user_id: u.id }) }
       toast(`${books.length} livres importés ! ✅`, 'success')
       const [{ count: bc }, { count: wc }] = await Promise.all([
-        supabase.from('books').select('*', { count:'exact', head:true }).eq('user_id', u.id),
-        supabase.from('wishlist').select('*', { count:'exact', head:true }).eq('user_id', u.id),
+        supabase.from('bibliotheque_books').select('*', { count:'exact', head:true }).eq('user_id', u.id),
+        supabase.from('bibliotheque_wishlist').select('*', { count:'exact', head:true }).eq('user_id', u.id),
       ])
       setBookCount(bc||0); setWishCount(wc||0)
     } catch { toast('Fichier invalide ❌', 'error') }
@@ -162,7 +162,6 @@ function SettingsContent() {
         </button>
       </div>
 
-      {/* Info */}
       <div className="bg-violet-light rounded-3xl p-4">
         <p className="text-sm font-semibold text-violet-dark leading-relaxed">
           💡 <strong>Sauvegarde automatique</strong> — chaque modification est instantanément sauvegardée. Exportez en JSON régulièrement pour une copie locale.
