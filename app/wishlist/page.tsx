@@ -35,16 +35,16 @@ function WishlistContent() {
   const [step, setStep] = useState<'search'|'form'>('search')
   const [form, setForm] = useState<WForm>(EMPTY)
 
-  const fetch = useCallback(async () => {
+  const loadWishes = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    let q = supabase.from('wishlist').select('*').eq('user_id', user.id)
+    let q = supabase.from('bibliotheque_wishlist').select('*').eq('user_id', user.id)
     if (prioFilter) q = q.eq('priority', prioFilter)
     const { data } = await q.order('date_added', { ascending: false })
     setWishes(data || []); setLoading(false)
   }, [prioFilter])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { loadWishes() }, [loadWishes])
 
   const filtered = wishes.filter(w =>
     !query || [w.title, w.author||'', w.where_to_find||'', w.notes||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
@@ -60,27 +60,27 @@ function WishlistContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     if (editWish) {
-      await supabase.from('wishlist').update({ ...form, user_id: user.id }).eq('id', editWish.id)
+      await supabase.from('bibliotheque_wishlist').update({ ...form, user_id: user.id }).eq('id', editWish.id)
       toast('Mis à jour !', 'success'); setEditWish(null)
     } else {
-      await supabase.from('wishlist').insert({ ...form, user_id: user.id })
+      await supabase.from('bibliotheque_wishlist').insert({ ...form, user_id: user.id })
       toast('Souhait ajouté ✨', 'success'); setShowAdd(false)
     }
-    setForm(EMPTY); setStep('search'); fetch()
+    setForm(EMPTY); setStep('search'); loadWishes()
   }
 
   async function deleteWish(id: string) {
     if (!confirm('Supprimer ?')) return
-    await supabase.from('wishlist').delete().eq('id', id)
-    toast('Supprimé', 'info'); fetch()
+    await supabase.from('bibliotheque_wishlist').delete().eq('id', id)
+    toast('Supprimé', 'info'); loadWishes()
   }
 
   async function moveToLibrary(w: WishItem) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('books').insert({ user_id:user.id, title:w.title, author:w.author||'', genre:w.genre, status:'À lire', rating:0, notes:w.notes, cover_url:w.cover_url, google_books_id:w.google_books_id, year:w.year })
-    await supabase.from('wishlist').delete().eq('id', w.id)
-    toast('Ajouté à ta bibliothèque ! 📚', 'success'); fetch()
+    await supabase.from('bibliotheque_books').insert({ user_id:user.id, title:w.title, author:w.author||'', genre:w.genre, status:'À lire', rating:0, notes:w.notes, cover_url:w.cover_url, google_books_id:w.google_books_id, year:w.year })
+    await supabase.from('bibliotheque_wishlist').delete().eq('id', w.id)
+    toast('Ajouté à ta bibliothèque ! 📚', 'success'); loadWishes()
   }
 
   function openEdit(w: WishItem) {
@@ -132,14 +132,12 @@ function WishlistContent() {
 
   return (
     <div className="space-y-4">
-      {/* Search */}
       <div className="relative">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher un souhait…" style={{ paddingLeft: '2.25rem' }} className="input pl-10 pr-9 py-2.5 text-sm" />
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher un souhait…" className="input pl-10 pr-9 py-2.5 text-sm" />
         {query && <button onClick={()=>setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X size={15} className="text-gray-400"/></button>}
       </div>
 
-      {/* Priority filter */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
         <button onClick={()=>setPrioFilter('')} className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${prioFilter===''?'bg-pink text-white shadow-glow-pink':'bg-white text-gray-500 shadow-sm'}`}>
           Tous · {wishes.length}
