@@ -21,7 +21,7 @@ export default function StatsPage() {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data } = await supabase.from('books').select('*').eq('user_id', user.id)
+      const { data } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
       setBooks(data || []); setLoading(false)
     }
     load()
@@ -50,14 +50,12 @@ export default function StatsPage() {
       <div className="space-y-4 pb-8">
         <h1 className="font-display font-black text-2xl text-ink">Mes statistiques 📊</h1>
 
-        {/* Hero counter */}
         <div className="card p-5 bg-gradient-to-br from-violet to-pink text-white">
           <p className="font-bold text-white/70 text-sm">Total de livres</p>
           <p className="font-black text-6xl">{books.length}</p>
           <p className="font-semibold text-white/80 text-sm mt-1">dans ta bibliothèque</p>
         </div>
 
-        {/* Status cards */}
         <div className="grid grid-cols-2 gap-3">
           {([['Lu',lu,'✅'],['En cours',ec,'📖'],['À lire',al,'📋'],['Abandonné',ab,'💀']] as [BookStatus,number,string][]).map(([s,n,e])=>(
             <div key={s} className={`card p-4 bg-gradient-to-br ${STATUS_BG[s]} text-white`}>
@@ -68,7 +66,6 @@ export default function StatsPage() {
           ))}
         </div>
 
-        {/* Pages + avg */}
         <div className="grid grid-cols-2 gap-3">
           <div className="card p-4 text-center">
             <div className="text-3xl mb-1">📄</div>
@@ -82,7 +79,6 @@ export default function StatsPage() {
           </div>
         </div>
 
-        {/* Donut-style progress */}
         {books.length > 0 && (
           <div className="card p-4">
             <h2 className="font-black text-base text-ink mb-3">Répartition par statut</h2>
@@ -101,7 +97,6 @@ export default function StatsPage() {
           </div>
         )}
 
-        {/* Genres */}
         {topGenres.length > 0 && (
           <div className="card p-4">
             <h2 className="font-black text-base text-ink mb-3">Genres favoris</h2>
@@ -120,7 +115,6 @@ export default function StatsPage() {
           </div>
         )}
 
-        {/* Ratings */}
         <div className="card p-4">
           <h2 className="font-black text-base text-ink mb-3">Distribution des notes</h2>
           <div className="space-y-2">
