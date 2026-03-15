@@ -171,7 +171,7 @@ function SeriesContent() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     for (const book of selected) {
-      await supabase.from('books').insert({
+      await supabase.from('bibliotheque_books').insert({
         user_id: user.id, title: book.title, author: book.authors.join(', '),
         genre: book.categories?.[0], year: extractYear(book.publishedDate),
         pages: book.pageCount, publisher: book.publisher,
@@ -189,7 +189,7 @@ function SeriesContent() {
   async function addToWishlist(book: GoogleBookWithMeta) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('wishlist').insert({
+    await supabase.from('bibliotheque_wishlist').insert({
       user_id: user.id,
       title: book.title,
       author: book.authors.join(', '),
@@ -211,14 +211,14 @@ function SeriesContent() {
   async function updateSeriesName(oldName: string, newName: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user || !newName.trim()) return
-    await supabase.from('books').update({ series_name: newName.trim() })
+    await supabase.from('bibliotheque_books').update({ series_name: newName.trim() })
       .eq('user_id', user.id).eq('series_name', oldName)
     toast('Série renommée !', 'success')
     setEditingSeries(null); loadSeries()
   }
 
   async function updateBookInSeries(bookId: string, data: Partial<Book>) {
-    await supabase.from('books').update(data).eq('id', bookId)
+    await supabase.from('bibliotheque_books').update(data).eq('id', bookId)
     setSeries(s => s.map(serie => ({
       ...serie,
       books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
@@ -227,7 +227,7 @@ function SeriesContent() {
 
   async function removeFromSeries(bookId: string) {
     if (!confirm('Retirer ce tome de la série ?')) return
-    await supabase.from('books').update({ series_name: null, series_number: null }).eq('id', bookId)
+    await supabase.from('bibliotheque_books').update({ series_name: null, series_number: null }).eq('id', bookId)
     toast('Tome retiré', 'info'); loadSeries()
   }
 
@@ -322,8 +322,6 @@ function SeriesContent() {
           {/* Résultats */}
           {!searching && results.length > 0 && (
             <div className="space-y-2">
-
-              {/* Header bulk */}
               {mode==='bulk' && (
                 <div className="flex items-center justify-between px-1">
                   <button onClick={() => { const all=results.every(b=>b.checked); setResults(r=>r.map(b=>({...b,checked:!all}))) }}
@@ -334,7 +332,6 @@ function SeriesContent() {
                 </div>
               )}
 
-              {/* Liste des résultats */}
               <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
                 {results.map(book => {
                   const cover = getBestCover(book.imageLinks)
@@ -344,8 +341,6 @@ function SeriesContent() {
                       mode==='bulk' && book.checked ? 'bg-violet-light ring-2 ring-violet ring-offset-1'
                       : mode==='bulk' ? 'bg-white/70 hover:bg-white' : 'bg-white'
                     }`}>
-
-                      {/* Checkbox bulk */}
                       {mode==='bulk' && (
                         <button onClick={() => setResults(r=>r.map(b=>b.id===book.id?{...b,checked:!b.checked}:b))}
                           className={`w-5 h-5 rounded-lg flex-shrink-0 flex items-center justify-center border-2 transition-all ${
@@ -354,21 +349,15 @@ function SeriesContent() {
                           {book.checked && <Check size={12} className="text-white" strokeWidth={3}/>}
                         </button>
                       )}
-
-                      {/* Couverture */}
                       {cover
                         ? <Image src={cover} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0"/>
                         : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                       }
-
-                      {/* Infos */}
                       <div className="flex-1 min-w-0">
                         <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
                         <p className="text-[11px] text-gray-500">{book.authors.join(', ')}</p>
                         {year && <p className="text-[11px] text-gray-400">{year}{book.pageCount?` · ${book.pageCount}p`:''}</p>}
                       </div>
-
-                      {/* Numéro de tome */}
                       <input type="number" value={book.tomeNumber}
                         onChange={e => setResults(r=>r.map(b=>b.id===book.id?{...b,tomeNumber:e.target.value}:b))}
                         placeholder="T." className="w-14 text-center border-2 border-gray-200 rounded-xl text-xs font-black py-1.5 focus:border-violet outline-none flex-shrink-0"/>
@@ -393,7 +382,6 @@ function SeriesContent() {
                 })}
               </div>
 
-              {/* Charger plus */}
               {hasMore && (
                 <button onClick={() => doSearch(searchQuery, page+1)} disabled={loadingMore}
                   className="w-full py-2.5 rounded-2xl bg-white/60 hover:bg-white font-black text-xs text-gray-500 transition-colors disabled:opacity-50">
@@ -401,7 +389,6 @@ function SeriesContent() {
                 </button>
               )}
 
-              {/* Boutons bulk */}
               {mode==='bulk' && (
                 <div className="space-y-2">
                   <button onClick={addSelected} disabled={selectedCount===0||adding||!seriesName.trim()}
