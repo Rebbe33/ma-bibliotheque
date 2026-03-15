@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
-import { Book, BookStatus } from '@/types'
+import { Book, BookStatus, GoogleBook } from '@/types'
 import AppLayout from '@/components/layout/AppLayout'
 import BottomSheet from '@/components/ui/BottomSheet'
 import BookForm from '@/components/ui/BookForm'
@@ -10,7 +10,6 @@ import BookCard from '@/components/ui/BookCard'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { Search, X, Plus, SlidersHorizontal } from 'lucide-react'
 import { getBestCover, extractYear } from '@/lib/google-books'
-import { GoogleBook } from '@/types'
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
 const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀' }
@@ -26,38 +25,37 @@ function LibraryContent() {
   const toast = useToast()
 
   const [books, setBooks] = useState<Book[]>([])
-const [allBooks, setAllBooks] = useState<Book[]>([])
+  const [allBooks, setAllBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<BookStatus | ''>('')
   const [sortBy, setSortBy] = useState<'date_added'|'title'|'author'|'rating'>('date_added')
   const [showFilters, setShowFilters] = useState(false)
-
   const [showAdd, setShowAdd] = useState(false)
   const [editBook, setEditBook] = useState<Book | null>(null)
   const [detailBook, setDetailBook] = useState<Book | null>(null)
 
-  const fetch = useCallback(async () => {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  const loadBooks = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-  // Tous les livres pour les compteurs
-  const { data: all } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
-  setAllBooks(all || [])
+    // Tous les livres pour les compteurs
+    const { data: all } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
+    setAllBooks(all || [])
 
-  // Livres filtrés pour l'affichage
-  let q = supabase.from('bibliotheque.books').select('*').eq('user_id', user.id)
-  if (statusFilter) q = q.eq('status', statusFilter)
-  if (sortBy === 'rating') q = q.order('rating', { ascending: false })
-  else if (sortBy === 'title') q = q.order('title')
-  else if (sortBy === 'author') q = q.order('author')
-  else q = q.order('date_added', { ascending: false })
-  const { data } = await q
-  setBooks(data || [])
-  setLoading(false)
-}, [statusFilter, sortBy])
+    // Livres filtrés+triés pour l'affichage
+    let q = supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
+    if (statusFilter) q = q.eq('status', statusFilter)
+    if (sortBy === 'rating') q = q.order('rating', { ascending: false })
+    else if (sortBy === 'title') q = q.order('title')
+    else if (sortBy === 'author') q = q.order('author')
+    else q = q.order('date_added', { ascending: false })
+    const { data } = await q
+    setBooks(data || [])
+    setLoading(false)
+  }, [statusFilter, sortBy])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { loadBooks() }, [loadBooks])
 
   const filtered = books.filter(b =>
     !query || [b.title, b.author, b.genre||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
@@ -71,54 +69,53 @@ const [allBooks, setAllBooks] = useState<Book[]>([])
     const { error } = await supabase.from('bibliotheque_books').insert({ ...data, user_id: user.id })
     if (error) { toast('Erreur lors de l\'ajout', 'error'); return }
     toast('Livre ajouté ! 📚', 'success')
-    setShowAdd(false); fetch()
+    setShowAdd(false); loadBooks()
+  }
+
+  async function addToWishlist(googleBook: GoogleBook) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    await supabase.from('bibliotheque_wishlist').insert({
+      user_id: user.id,
+      title: googleBook.title,
+      author: googleBook.authors.join(', '),
+      cover_url: getBestCover(googleBook.imageLinks),
+      google_books_id: googleBook.id,
+      year: extractYear(googleBook.publishedDate),
+      priority: 'Moyenne',
+    })
+    toast('Ajouté à tes souhaits ✨', 'success')
+    setShowAdd(false)
   }
 
   async function updateBook(id: string, data: Partial<Book>) {
     const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
     if (error) { toast('Erreur', 'error'); return }
     toast('Mis à jour !', 'success')
-    setEditBook(null); fetch()
+    setEditBook(null); loadBooks()
   }
 
   async function deleteBook(id: string) {
     if (!confirm('Supprimer ce livre ?')) return
     await supabase.from('bibliotheque_books').delete().eq('id', id)
-    toast('Supprimé', 'info'); fetch()
+    toast('Supprimé', 'info'); loadBooks()
   }
 
   async function markRead(id: string) {
     await supabase.from('bibliotheque_books').update({ status: 'Lu' }).eq('id', id)
-    toast('Marqué comme lu ✅', 'success'); fetch()
+    toast('Marqué comme lu ✅', 'success'); loadBooks()
   }
-
-async function addToWishlist(googleBook: GoogleBook) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  await supabase.from('bibliotheque_wishlist').insert({
-    user_id: user.id,
-    title: googleBook.title,
-    author: googleBook.authors.join(', '),
-    cover_url: getBestCover(googleBook.imageLinks),
-    google_books_id: googleBook.id,
-    year: extractYear(googleBook.publishedDate),
-    priority: 'Moyenne',
-  })
-  toast('Ajouté à tes souhaits ✨', 'success')
-  setShowAdd(false)
-}
 
   return (
     <div className="space-y-4">
-
       {/* Status pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
         <button onClick={() => setStatusFilter('')}
-  className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
-    statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
-  }`}>
-  Tous · {allBooks.length}
-</button>
+          className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
+            statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+          }`}>
+          Tous · {allBooks.length}
+        </button>
         {STATUSES.map(s => (
           <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
             className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
@@ -134,7 +131,6 @@ async function addToWishlist(googleBook: GoogleBook) {
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un livre…"
-            style={{ paddingLeft: '2.25rem' }}
             className="input pl-10 pr-9 py-2.5 text-sm" />
           {query && (
             <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -148,7 +144,6 @@ async function addToWishlist(googleBook: GoogleBook) {
         </button>
       </div>
 
-      {/* Results info */}
       {(query || statusFilter) && (
         <p className="text-xs font-bold text-gray-400">
           {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
@@ -156,7 +151,6 @@ async function addToWishlist(googleBook: GoogleBook) {
         </p>
       )}
 
-      {/* Book list */}
       {loading ? (
         <div className="space-y-3">
           {[1,2,3].map(i => (
@@ -172,9 +166,9 @@ async function addToWishlist(googleBook: GoogleBook) {
         </div>
       ) : filtered.length === 0 ? (
         <div className="card p-10 text-center">
-          <div className="text-5xl mb-3 animate-float inline-block">{books.length === 0 ? '📚' : '🔍'}</div>
-          <p className="font-black text-lg text-ink">{books.length === 0 ? 'Bibliothèque vide !' : 'Aucun résultat'}</p>
-          <p className="text-sm text-gray-400 mt-1">{books.length === 0 ? 'Ajoutez votre premier livre ✨' : 'Essayez un autre filtre'}</p>
+          <div className="text-5xl mb-3 animate-float inline-block">{allBooks.length === 0 ? '📚' : '🔍'}</div>
+          <p className="font-black text-lg text-ink">{allBooks.length === 0 ? 'Bibliothèque vide !' : 'Aucun résultat'}</p>
+          <p className="text-sm text-gray-400 mt-1">{allBooks.length === 0 ? 'Ajoutez votre premier livre ✨' : 'Essayez un autre filtre'}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -189,13 +183,11 @@ async function addToWishlist(googleBook: GoogleBook) {
         </div>
       )}
 
-      {/* FAB */}
       <button onClick={() => setShowAdd(true)}
         className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-br from-violet to-pink text-white shadow-glow flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
         <Plus size={28} />
       </button>
 
-      {/* Sheets */}
       <BottomSheet open={showAdd} onClose={() => setShowAdd(false)} title="Ajouter un livre">
         <BookForm onSave={addBook} onCancel={() => setShowAdd(false)} onAddToWishlist={addToWishlist} />
       </BottomSheet>
@@ -208,7 +200,6 @@ async function addToWishlist(googleBook: GoogleBook) {
         {detailBook && <BookDetail book={detailBook} onEdit={() => { setEditBook(detailBook); setDetailBook(null) }} />}
       </BottomSheet>
 
-      {/* Sort/filter sheet */}
       <BottomSheet open={showFilters} onClose={() => setShowFilters(false)} title="Trier par">
         <div className="space-y-2 pb-2">
           {([['date_added','📅 Plus récent'],['title','🔤 Titre'],['author','👤 Auteur'],['rating','⭐ Note']] as const).map(([v, label]) => (
@@ -251,8 +242,6 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
           </div>
         </div>
       </div>
-
-      {/* Meta grid */}
       <div className="grid grid-cols-2 gap-2">
         {[['Genre',book.genre],['Année',book.year],['Pages',book.pages&&`${book.pages} pages`],['Éditeur',book.publisher],['ISBN',book.isbn]].filter(([,v])=>v).map(([k,v])=>(
           <div key={k as string} className="bg-bg-base rounded-2xl p-3">
@@ -261,14 +250,12 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
           </div>
         ))}
       </div>
-
       {book.notes && (
         <div className="bg-amber-light rounded-2xl p-4">
           <p className="text-[10px] font-black text-amber-dark uppercase mb-1.5">📝 Notes</p>
           <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{book.notes}</p>
         </div>
       )}
-
       <button onClick={onEdit} className="btn btn-primary w-full py-3">✏️ Modifier</button>
     </div>
   )
