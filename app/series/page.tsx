@@ -517,20 +517,6 @@ function SeriesContent() {
         </button>
       </div>
 
-      {/* ── Pills filtre ── */}
-      <div className="flex gap-2 py-0.5 -mx-4 px-4 overflow-x-auto">
-        <button onClick={() => setMissingFilter(false)}
-          className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${!missingFilter ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm'}`}>
-          Toutes · {series.length}
-        </button>
-        {seriesWithMissingCount > 0 && (
-          <button onClick={() => setMissingFilter(!missingFilter)}
-            className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${missingFilter ? 'bg-coral-light text-coral-dark shadow-card ring-2 ring-offset-1 ring-current' : 'bg-white text-gray-500 shadow-sm'}`}>
-            📋 Manquants · {seriesWithMissingCount}
-          </button>
-        )}
-      </div>
-
       {/* ── Créer une série ── */}
       {showCreate && (
         <div className="card p-4 space-y-4 bg-gradient-to-br from-violet-light to-pink-light">
@@ -766,13 +752,6 @@ function SeriesContent() {
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <span className={STATUS_CHIP[book.status]}>{book.status}</span>
-                          {/* Bouton "manquant" — ajoute à la wishlist */}
-                          <button
-                            onClick={() => addMissingToWishlist(book)}
-                            className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 hover:bg-coral-light hover:text-coral-dark transition-colors"
-                            title="Marquer comme manquant et ajouter aux souhaits">
-                            📋
-                          </button>
                         </div>
                       </div>
                     ))}
