@@ -174,7 +174,7 @@ function WishlistContent() {
       </div>
 
       {/* Pills filtres */}
-      <div className="-mt-2 flex gap-2 overflow-x-auto py-0.5 -mx-4 px-4">
+      <div className="-mt-2 flex gap-2 overflow-x-auto py-1 -mx-4 px-4">
         <button onClick={() => setPrioFilter('')}
           className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${prioFilter===''?'bg-pink text-white shadow-glow-pink':'bg-white text-gray-500 shadow-sm'}`}>
           Tous · {allWishes.length}
