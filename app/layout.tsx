@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
+
 
 
 export const metadata: Metadata = {
@@ -32,3 +34,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
+
+<body>
+  <ServiceWorkerRegister />
+  {children}
+</body>
