@@ -58,12 +58,15 @@ function LibraryContent() {
 
   // Recherche floue — contient le mot, pas besoin du titre exact
   const filtered = books.filter(b => {
-    if (!query) return true
-    const q = query.toLowerCase()
-    return [b.title, b.author, b.genre||'', b.series_name||''].some(s =>
-      s.toLowerCase().includes(q)
-    )
-  })
+  if (!query) return true
+  const q = query.toLowerCase()
+  // Normaliser : enlever les zéros devant les chiffres (T01 → t1, 01 → 1)
+  const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
+  const nq = normalize(q)
+  return [b.title, b.author, b.genre || '', b.series_name || ''].some(s =>
+    normalize(s).includes(nq) || s.toLowerCase().includes(q)
+  )
+})
 
   const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
 
@@ -92,25 +95,37 @@ function LibraryContent() {
     setShowAdd(false)
   }
 
- async function updateBook(id: string, data: Partial<Book>) {
-  // Si on passe le statut à "À acquérir" → déplacer vers la wishlist
+async function updateBook(id: string, data: Partial<Book>) {
   if (data.status === 'À acquérir') {
     const book = allBooks.find(b => b.id === id)
     if (book) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        await supabase.from('bibliotheque_wishlist').insert({
-          user_id: user.id,
-          title: book.title,
-          author: book.author,
-          cover_url: book.cover_url,
-          google_books_id: book.google_books_id,
-          year: book.year,
-          priority: 'Haute',
-          notes: book.notes,
-        })
-        await supabase.from('bibliotheque_books').delete().eq('id', id)
-        toast('Déplacé vers tes souhaits ! 🛒', 'success')
+        // Vérifier si déjà dans la wishlist
+        const { data: existing } = await supabase
+          .from('bibliotheque_wishlist')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('title', book.title)
+          .maybeSingle()
+
+        if (existing) {
+          toast('Déjà dans tes souhaits !', 'info')
+        } else {
+          await supabase.from('bibliotheque_wishlist').insert({
+            user_id: user.id,
+            title: book.title,
+            author: book.author,
+            cover_url: book.cover_url,
+            google_books_id: book.google_books_id,
+            year: book.year,
+            priority: 'Haute',
+            notes: book.notes,
+          })
+          toast('Ajouté à tes souhaits ! 🛒', 'success')
+        }
+        // Mettre à jour le statut sans supprimer le livre
+        await supabase.from('bibliotheque_books').update({ status: 'À acquérir' }).eq('id', id)
         setEditBook(null); loadBooks()
         return
       }
