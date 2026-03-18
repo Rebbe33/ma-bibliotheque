@@ -79,6 +79,7 @@ select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csv
 .chip-en     { background: #fef3c7; color: #92400e; }
 .chip-al     { background: #dbeafe; color: #1e40af; }
 .chip-ab     { background: #fee2e2; color: #991b1b; }
+.chip-aq { @apply bg-coral-light text-coral-dark; }
 
 /* ── COVER PLACEHOLDER COLORS ── */
 .cover-0 { background: linear-gradient(135deg,#7c3aed,#a855f7); }
