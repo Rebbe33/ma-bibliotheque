@@ -11,11 +11,16 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { Search, X, Plus, SlidersHorizontal } from 'lucide-react'
 import { getBestCover, extractYear } from '@/lib/google-books'
 
-const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
-const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀' }
+const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+const STATUS_EMOJI: Record<BookStatus, string> = {
+  'À lire':'📋', 'En cours':'📖', 'Lu':'✅', 'Abandonné':'💀', 'À acquérir':'🛒'
+}
 const STATUS_BG: Record<BookStatus, string> = {
-  'Lu': 'bg-mint-light text-mint-dark', 'En cours': 'bg-amber-light text-amber-dark',
-  'À lire': 'bg-cyan-light text-cyan-dark', 'Abandonné': 'bg-red-50 text-red-600',
+  'Lu': 'bg-mint-light text-mint-dark',
+  'En cours': 'bg-amber-light text-amber-dark',
+  'À lire': 'bg-cyan-light text-cyan-dark',
+  'Abandonné': 'bg-red-50 text-red-600',
+  'À acquérir': 'bg-coral-light text-coral-dark',
 }
 
 function LibraryContent() {
@@ -87,12 +92,35 @@ function LibraryContent() {
     setShowAdd(false)
   }
 
-  async function updateBook(id: string, data: Partial<Book>) {
-    const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
-    if (error) { toast('Erreur', 'error'); return }
-    toast('Mis à jour !', 'success')
-    setEditBook(null); loadBooks()
+ async function updateBook(id: string, data: Partial<Book>) {
+  // Si on passe le statut à "À acquérir" → déplacer vers la wishlist
+  if (data.status === 'À acquérir') {
+    const book = allBooks.find(b => b.id === id)
+    if (book) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('bibliotheque_wishlist').insert({
+          user_id: user.id,
+          title: book.title,
+          author: book.author,
+          cover_url: book.cover_url,
+          google_books_id: book.google_books_id,
+          year: book.year,
+          priority: 'Haute',
+          notes: book.notes,
+        })
+        await supabase.from('bibliotheque_books').delete().eq('id', id)
+        toast('Déplacé vers tes souhaits ! 🛒', 'success')
+        setEditBook(null); loadBooks()
+        return
+      }
+    }
   }
+  const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
+  if (error) { toast('Erreur', 'error'); return }
+  toast('Mis à jour !', 'success')
+  setEditBook(null); loadBooks()
+}
 
   async function deleteBook(id: string) {
     if (!confirm('Supprimer ce livre ?')) return
