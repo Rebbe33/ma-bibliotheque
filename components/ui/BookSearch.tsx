@@ -33,15 +33,20 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
       const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}&lang=${fr ? 'fr' : 'all'}`)
       const data: GoogleBook[] = await res.json()
 
-      // Tri par pertinence — titres qui contiennent le mot cherché en premier
-      const ql = q.toLowerCase()
-      const sorted = [...data].sort((a, b) => {
-        const aTitle = a.title.toLowerCase()
-        const bTitle = b.title.toLowerCase()
-        const aScore = aTitle.startsWith(ql) ? 0 : aTitle.includes(ql) ? 1 : 2
-        const bScore = bTitle.startsWith(ql) ? 0 : bTitle.includes(ql) ? 1 : 2
-        return aScore - bScore
-      })
+      // Tri par pertinence — cherche dans tous les mots du titre
+const ql = q.toLowerCase()
+const sorted = [...data].sort((a, b) => {
+  const aTitle = a.title.toLowerCase()
+  const bTitle = b.title.toLowerCase()
+  // Score : 0 = commence par, 1 = contient le mot entier, 2 = contient les lettres, 3 = rien
+  const score = (title: string) => {
+    if (title.startsWith(ql)) return 0
+    if (title.includes(ql)) return 1
+    if (title.split(/\s+/).some(w => w.includes(ql))) return 2
+    return 3
+  }
+  return score(aTitle) - score(bTitle)
+})
 
       if (p === 0) setResults(sorted)
       else setResults(r => [...r, ...sorted])
