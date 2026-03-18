@@ -59,13 +59,16 @@ function LibraryContent() {
   // Recherche floue — contient le mot, pas besoin du titre exact
   const filtered = books.filter(b => {
   if (!query) return true
-  const q = query.toLowerCase()
-  // Normaliser : enlever les zéros devant les chiffres (T01 → t1, 01 → 1)
   const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
-  const nq = normalize(q)
-  return [b.title, b.author, b.genre || '', b.series_name || ''].some(s =>
-    normalize(s).includes(nq) || s.toLowerCase().includes(q)
-  )
+  // Découper la recherche en mots séparés
+  const words = query.toLowerCase().trim().split(/\s+/)
+  const haystack = normalize([b.title, b.author, b.genre || '', b.series_name || ''].join(' '))
+  const haystackRaw = [b.title, b.author, b.genre || '', b.series_name || ''].join(' ').toLowerCase()
+  // Tous les mots doivent être trouvés (AND)
+  return words.every(word => {
+    const nw = normalize(word)
+    return haystack.includes(nw) || haystackRaw.includes(word)
+  })
 })
 
   const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
