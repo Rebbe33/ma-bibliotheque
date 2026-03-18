@@ -102,7 +102,14 @@ function WishlistContent() {
     setStep('form'); setEditWish(w)
   }
 
-  const WishForm = () => (
+ function WishForm({ form, setForm, onSave, onCancel, PRIOS }: {
+  form: any
+  setForm: (f: any) => void
+  onSave: () => void
+  onCancel: () => void
+  PRIOS: WishPriority[]
+}) {
+  return (
     <div className="space-y-3 pb-2">
       {form.cover_url && (
         <div className="flex justify-center">
@@ -111,38 +118,39 @@ function WishlistContent() {
       )}
       <div>
         <label className="block text-xs font-black text-gray-500 mb-1">TITRE *</label>
-        <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} className="input" placeholder="Titre" />
+        <input value={form.title} onChange={e => setForm((f: any) => ({...f, title: e.target.value}))} className="input" placeholder="Titre" />
       </div>
       <div>
         <label className="block text-xs font-black text-gray-500 mb-1">AUTEUR</label>
-        <input value={form.author} onChange={e=>setForm(f=>({...f,author:e.target.value}))} className="input" placeholder="Auteur" />
+        <input value={form.author} onChange={e => setForm((f: any) => ({...f, author: e.target.value}))} className="input" placeholder="Auteur" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-black text-gray-500 mb-1">PRIORITÉ</label>
-          <select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value as WishPriority}))} className="input select">
-            {PRIOS.map(p=><option key={p} value={p}>{p}</option>)}
+          <select value={form.priority} onChange={e => setForm((f: any) => ({...f, priority: e.target.value}))} className="input select">
+            {PRIOS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         </div>
         <div>
           <label className="block text-xs font-black text-gray-500 mb-1">GENRE</label>
-          <input value={form.genre} onChange={e=>setForm(f=>({...f,genre:e.target.value}))} className="input" placeholder="Roman…" />
+          <input value={form.genre} onChange={e => setForm((f: any) => ({...f, genre: e.target.value}))} className="input" placeholder="Roman…" />
         </div>
       </div>
       <div>
         <label className="block text-xs font-black text-gray-500 mb-1">📍 OÙ LE TROUVER ?</label>
-        <input value={form.where_to_find} onChange={e=>setForm(f=>({...f,where_to_find:e.target.value}))} className="input" placeholder="Fnac, bibliothèque, Amazon…" />
+        <input value={form.where_to_find} onChange={e => setForm((f: any) => ({...f, where_to_find: e.target.value}))} className="input" placeholder="Fnac, bibliothèque, Amazon…" />
       </div>
       <div>
         <label className="block text-xs font-black text-gray-500 mb-1">NOTES</label>
-        <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={2} className="input resize-none" placeholder="Recommandé par…" />
+        <textarea value={form.notes} onChange={e => setForm((f: any) => ({...f, notes: e.target.value}))} rows={2} className="input resize-none" placeholder="Recommandé par…" />
       </div>
       <div className="flex gap-3 pt-1">
-        <button onClick={()=>{setShowAdd(false);setEditWish(null);setForm(EMPTY);setStep('search')}} className="btn btn-secondary flex-1">Annuler</button>
-        <button onClick={saveWish} disabled={!form.title.trim()} className="btn btn-primary flex-[2] py-3 disabled:opacity-50">💾 Enregistrer</button>
+        <button onClick={onCancel} className="btn btn-secondary flex-1">Annuler</button>
+        <button onClick={onSave} disabled={!form.title.trim()} className="btn btn-primary flex-[2] py-3 disabled:opacity-50">💾 Enregistrer</button>
       </div>
     </div>
   )
+}
 
   return (
     <div className="space-y-4">
@@ -242,7 +250,13 @@ function WishlistContent() {
             <BookSearch onSelect={fromGoogle} onManual={()=>setStep('form')} mode="wishlist"/>
             <button onClick={()=>setShowAdd(false)} className="mt-2 btn btn-ghost w-full">Annuler</button>
           </div>
-        ) : <WishForm/>}
+        ) : <WishForm
+  form={form}
+  setForm={setForm}
+  onSave={saveWish}
+  onCancel={() => { setShowAdd(false); setEditWish(null); setForm(EMPTY); setStep('search') }}
+  PRIOS={PRIOS}
+/>
       </BottomSheet>
     </div>
   )
