@@ -53,16 +53,21 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
                   <Trash2 size={13}/>
                 </button>
               </div>
-              <div className="flex gap-2">
-                <select value={book.status}
-                  onChange={e => onUpdateBook(book.id, { status: e.target.value as BookStatus })}
-                  className="input text-xs py-1.5 flex-1">
-                  {STATUSES.map(s => <option key={s} value={s}>{STATUS_EMOJI[s]} {s}</option>)}
-                </select>
-                <input type="number" value={book.series_number || ''}
-                  onChange={e => onUpdateBook(book.id, { series_number: e.target.value ? parseFloat(e.target.value) : undefined })}
-                  placeholder="Tome #" className="input text-xs py-1.5 w-24 text-center"/>
-              </div>
+             <div className="grid grid-cols-[1fr_72px] gap-2">
+  <select value={book.status}
+    onChange={e => onUpdateBook(book.id, { status: e.target.value as BookStatus })}
+    className="input text-xs py-1.5">
+    {STATUSES.map(s => <option key={s} value={s}>{STATUS_EMOJI[s]} {s}</option>)}
+  </select>
+  <input
+    type="number"
+    value={book.series_number ?? ''}
+    onChange={e => onUpdateBook(book.id, { series_number: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+    placeholder="N°"
+    min="0" max="99"
+    className="input text-xs py-1.5 text-center"
+  />
+</div>
               <div className="flex gap-1">
                 {[1,2,3,4,5].map(n => (
                   <button key={n} onClick={() => onUpdateBook(book.id, { rating: book.rating === n ? 0 : n })}
@@ -321,7 +326,20 @@ function SeriesContent() {
     !query || s.name.toLowerCase().includes(query.toLowerCase()) ||
     s.books.some(b => b.author.toLowerCase().includes(query.toLowerCase()))
   )
-
+async function addMissingToWishlist(book: Book) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase.from('bibliotheque_wishlist').insert({
+    user_id: user.id,
+    title: book.title,
+    author: book.author,
+    cover_url: book.cover_url,
+    year: book.year,
+    priority: 'Haute',
+    notes: `Tome manquant de la série "${book.series_name}"`,
+  })
+  toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
+}
   async function doSearch(q = searchQuery, p = 0, src = source) {
     if (!q.trim()) return
     if (p === 0) { setSearching(true); setResults([]) }
@@ -670,23 +688,27 @@ function SeriesContent() {
                 </div>
 
                 {isOpen && (
-                  <div className="border-t border-gray-100 divide-y divide-gray-50">
-                    {books.map(book => {
-                      const STATUS_CHIP: Record<string,string> = {'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab'}
-                      return (
-                        <div key={book.id} className="flex items-center gap-3 px-4 py-3">
-                          {book.cover_url
-                            ? <Image src={book.cover_url} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0"/>
-                            : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
-                          }
-                          <div className="flex-1 min-w-0">
-                            <p className="font-bold text-sm text-ink line-clamp-1">
-                              {book.series_number?`#${book.series_number} · `:''}{book.title}
-                            </p>
-                            {book.rating>0 && <span className="text-xs">{'⭐'.repeat(book.rating)}</span>}
-                          </div>
-                          <span className={STATUS_CHIP[book.status]}>{book.status}</span>
-                        </div>
+                  <div key={book.id} className="flex items-center gap-3 px-4 py-3">
+  {book.cover_url
+    ? <Image src={book.cover_url} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0"/>
+    : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
+  }
+  <div className="flex-1 min-w-0">
+    <p className="font-bold text-sm text-ink line-clamp-1">
+      {book.series_number?`#${book.series_number} · `:''}{book.title}
+    </p>
+    {book.rating>0 && <span className="text-xs">{'⭐'.repeat(book.rating)}</span>}
+  </div>
+  <div className="flex items-center gap-1.5 flex-shrink-0">
+    <span className={STATUS_CHIP[book.status]}>{book.status}</span>
+    <button
+    onClick={() => addMissingToWishlist(book)}
+    className="text-[10px] font-black px-2 py-0.5 rounded-full bg-gray-100 text-gray-400 hover:bg-coral-light hover:text-coral-dark transition-colors whitespace-nowrap"
+    title="Ajouter à mes souhaits comme tome manquant">
+    📋 manquant
+  </button>
+  </div>
+</div>
                       )
                     })}
                   </div>
