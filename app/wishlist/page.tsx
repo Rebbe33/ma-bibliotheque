@@ -35,6 +35,7 @@ function WishlistContent() {
   const [editWish, setEditWish] = useState<WishItem | null>(null)
   const [step, setStep] = useState<'search'|'form'>('search')
   const [form, setForm] = useState<WForm>(EMPTY)
+  const [noLocationFilter, setNoLocationFilter] = useState(false)
 
   const loadWishes = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -53,10 +54,16 @@ function WishlistContent() {
 
   useEffect(() => { loadWishes() }, [loadWishes])
 
-  const filtered = wishes.filter(w =>
-    !query || [w.title, w.author||'', w.where_to_find||'', w.notes||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
-  )
+  const filtered = wishes.filter(w => {
+  const matchQuery = !query || [w.title, w.author||'', w.where_to_find||'', w.notes||'']
+    .some(s => s.toLowerCase().includes(query.toLowerCase()))
+  const matchPrio = !prioFilter || w.priority === prioFilter
+  const matchNoLocation = !noLocationFilter || !w.where_to_find?.trim()
+  return matchQuery && matchPrio && matchNoLocation
+})
+  const noLocationCount = allWishes.filter(w => !w.where_to_find?.trim()).length
 
+  
   function fromGoogle(book: GoogleBook) {
     setForm({ title:book.title, author:book.authors.join(', '), genre:book.categories?.[0]||'', priority:'Moyenne', where_to_find:'', notes:'', cover_url:getBestCover(book.imageLinks)||'', google_books_id:book.id, year:extractYear(book.publishedDate) })
     setStep('form')
@@ -171,6 +178,16 @@ function WishlistContent() {
             {p} · {allWishes.filter(w=>w.priority===p).length}
           </button>
         ))}
+        {noLocationCount > 0 && (
+  <button onClick={() => setNoLocationFilter(!noLocationFilter)}
+    className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
+      noLocationFilter
+        ? 'bg-amber-light text-amber-dark shadow-card ring-2 ring-offset-1 ring-current'
+        : 'bg-white text-gray-500 shadow-sm'
+    }`}>
+    📍 Sans localisation · {noLocationCount}
+  </button>
+)}
       </div>
 
       {loading ? (
