@@ -26,11 +26,20 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
   onRemoveBook: (id: string) => void
 }) {
   const [name, setName] = useState(series.name)
+  // State local pour les valeurs en cours d'édition
+  const [localBooks, setLocalBooks] = useState(series.books)
   const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
-const STATUS_EMOJI: Record<BookStatus, string> = {
-  'À lire':'📋', 'En cours':'📖', 'Lu':'✅', 'Abandonné':'💀', 'À acquérir':'🛒'
-}
-  function coverIdx(t: string) { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) & 0xfffffff; return h % 8 }
+  const STATUS_EMOJI: Record<BookStatus, string> = {
+    'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀','À acquérir':'🛒'
+  }
+  function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%8 }
+
+  function handleUpdate(bookId: string, data: Partial<Book>) {
+    // Mettre à jour localement immédiatement pour l'affichage
+    setLocalBooks(books => books.map(b => b.id === bookId ? { ...b, ...data } : b))
+    // Puis sauvegarder en base
+    onUpdateBook(bookId, data)
+  }
 
   return (
     <div className="space-y-4 pb-4">
@@ -43,13 +52,13 @@ const STATUS_EMOJI: Record<BookStatus, string> = {
         </div>
       </div>
       <div>
-        <label className="block text-xs font-black text-gray-500 mb-2">TOMES ({series.books.length})</label>
+        <label className="block text-xs font-black text-gray-500 mb-2">TOMES ({localBooks.length})</label>
         <div className="space-y-2">
-          {series.books.map(book => (
+          {localBooks.map(book => (
             <div key={book.id} className="card p-3 space-y-2">
               <div className="flex items-center gap-3">
                 {book.cover_url
-                  ? <Image src={book.cover_url} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0" />
+                  ? <Image src={book.cover_url} alt={book.title} width={36} height={50} className="rounded-lg object-cover flex-shrink-0"/>
                   : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>📖</div>
                 }
                 <div className="flex-1 min-w-0">
@@ -58,31 +67,31 @@ const STATUS_EMOJI: Record<BookStatus, string> = {
                 </div>
                 <button onClick={() => onRemoveBook(book.id)}
                   className="w-7 h-7 rounded-xl bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-100 transition-colors flex-shrink-0">
-                  <Trash2 size={13} />
+                  <Trash2 size={13}/>
                 </button>
               </div>
-              {/* Statut (large) + N° tome (petit) */}
               <div className="grid grid-cols-[1fr_72px] gap-2">
                 <select
                   value={book.status}
-                  onChange={e => onUpdateBook(book.id, { status: e.target.value as BookStatus })}
+                  onChange={e => handleUpdate(book.id, { status: e.target.value as BookStatus })}
                   className="input text-xs py-1.5">
                   {STATUSES.map(s => <option key={s} value={s}>{STATUS_EMOJI[s]} {s}</option>)}
                 </select>
                 <input
                   type="number"
                   value={book.series_number ?? ''}
-                  onChange={e => onUpdateBook(book.id, { series_number: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                  onChange={e => handleUpdate(book.id, {
+                    series_number: e.target.value === '' ? undefined : parseFloat(e.target.value)
+                  })}
                   placeholder="N°"
-                  min="0"
-                  max="99"
+                  min="0" max="99"
                   className="input text-xs py-1.5 text-center"
                 />
               </div>
               <div className="flex gap-1">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button key={n} onClick={() => onUpdateBook(book.id, { rating: book.rating === n ? 0 : n })}
-                    className={`text-lg transition-all hover:scale-125 ${n <= (book.rating || 0) ? '' : 'opacity-25'}`}>⭐</button>
+                {[1,2,3,4,5].map(n => (
+                  <button key={n} onClick={() => handleUpdate(book.id, { rating: book.rating === n ? 0 : n })}
+                    className={`text-lg transition-all hover:scale-125 ${n <= (book.rating||0) ? '' : 'opacity-25'}`}>⭐</button>
                 ))}
               </div>
             </div>
@@ -334,19 +343,29 @@ function SeriesContent() {
   const seriesWithMissingCount = series.filter(s => hasMissing(s.books)).length
 
   async function addMissingToWishlist(book: Book) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('bibliotheque_wishlist').insert({
-      user_id: user.id,
-      title: book.title,
-      author: book.author,
-      cover_url: book.cover_url,
-      year: book.year,
-      priority: 'Haute',
-      notes: `Tome manquant de la série "${book.series_name}"`,
-    })
-    toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { data: existing } = await supabase
+    .from('bibliotheque_wishlist')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('title', book.title)
+    .maybeSingle()
+  if (existing) {
+    toast('Déjà dans tes souhaits !', 'info')
+    return
   }
+  await supabase.from('bibliotheque_wishlist').insert({
+    user_id: user.id,
+    title: book.title,
+    author: book.author,
+    cover_url: book.cover_url,
+    year: book.year,
+    priority: 'Haute',
+    notes: `Tome manquant de la série "${book.series_name}"`,
+  })
+  toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
+}
 
   async function doSearch(q = searchQuery, p = 0, src = source) {
     if (!q.trim()) return
@@ -438,12 +457,41 @@ function SeriesContent() {
   }
 
   async function updateBookInSeries(bookId: string, data: Partial<Book>) {
-    await supabase.from('bibliotheque_books').update(data).eq('id', bookId)
-    setSeries(s => s.map(serie => ({
-      ...serie,
-      books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
-    })))
+  // Si "À acquérir" → ajouter à la wishlist sans retirer de la série
+  if (data.status === 'À acquérir') {
+    const book = series.flatMap(s => s.books).find(b => b.id === bookId)
+    if (book) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: existing } = await supabase
+          .from('bibliotheque_wishlist')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('title', book.title)
+          .maybeSingle()
+        if (existing) {
+          toast('Déjà dans tes souhaits !', 'info')
+        } else {
+          await supabase.from('bibliotheque_wishlist').insert({
+            user_id: user.id,
+            title: book.title,
+            author: book.author,
+            cover_url: book.cover_url,
+            year: book.year,
+            priority: 'Haute',
+          })
+          toast(`"${book.title}" ajouté aux souhaits ! 🛒`, 'success')
+        }
+      }
+    }
   }
+  // Toujours mettre à jour le statut en base (sans supprimer)
+  await supabase.from('bibliotheque_books').update(data).eq('id', bookId)
+  setSeries(s => s.map(serie => ({
+    ...serie,
+    books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
+  })))
+}
 
   async function removeFromSeries(bookId: string) {
     if (!confirm('Retirer ce tome de la série ?')) return
