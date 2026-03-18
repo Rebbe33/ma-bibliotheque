@@ -241,7 +241,7 @@ async function updateBook(id: string, data: Partial<Book>) {
               onClick={() => setDetailBook(book)}
               onEdit={e => { e.stopPropagation(); setEditBook(book) }}
               onDelete={e => { e.stopPropagation(); deleteBook(book.id) }}
-              onMarkNextStatus={e => { e.stopPropagation(); markRead(book.id) }}
+              onMarkRead={e => { e.stopPropagation(); markNextStatus(book) }}
             />
           ))}
         </div>
