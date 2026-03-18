@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: 'Ma Bibliothèque 📚',
   description: 'Gérez vos livres et BD avec style !',
   manifest: '/manifest.json',
-  appleWebApp: { capable: true, statusBarStyle: 'black-translucent' },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
