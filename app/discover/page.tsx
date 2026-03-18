@@ -191,7 +191,7 @@ function DiscoverContent() {
     })
 
     toast(`"${book.title}" ajouté aux souhaits ✨`, 'success')
-    setMyWishlistTitles(prev => new Set([...prev, book.title.toLowerCase()]))
+    setMyWishlistTitles(prev => new Set(Array.from(prev).concat(book.title.toLowerCase())))
   }
 
   return (
