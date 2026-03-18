@@ -1,16 +1,17 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { GoogleBook, Book, BookStatus } from '@/types'
 import { extractYear, getBestCover, getISBN } from '@/lib/google-books'
+import { createClient } from '@/lib/supabase'
 import BookSearch from './BookSearch'
-import { Search } from 'lucide-react'
+import { Search, ChevronDown } from 'lucide-react'
 
 interface Props {
   initial?: Partial<Book>
   onSave: (data: Partial<Book>) => Promise<void>
   onCancel: () => void
-  onAddToWishlist?: (book: GoogleBook) => void  // ← ajouter cette ligne
+  onAddToWishlist?: (book: GoogleBook) => void
 }
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
@@ -23,8 +24,13 @@ const STATUS_COLORS: Record<BookStatus, string> = {
 }
 
 export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishlist }: Props) {
+  const supabase = createClient()
   const [step, setStep] = useState<'search' | 'form'>(initial.title ? 'form' : 'search')
   const [saving, setSaving] = useState(false)
+  const [existingSeries, setExistingSeries] = useState<string[]>([])
+  const [seriesMode, setSeriesMode] = useState<'existing' | 'new'>(
+    initial.series_name ? 'existing' : 'new'
+  )
   const [form, setForm] = useState({
     title: initial.title || '',
     author: initial.author || '',
@@ -41,6 +47,22 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
     notes: initial.notes || '',
     google_books_id: initial.google_books_id || '',
   })
+
+  useEffect(() => {
+    async function loadSeries() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('bibliotheque_books')
+        .select('series_name')
+        .eq('user_id', user.id)
+        .not('series_name', 'is', null)
+      const names = [...new Set((data || []).map((b: any) => b.series_name as string))].sort()
+      setExistingSeries(names)
+      if (names.length > 0 && !initial.series_name) setSeriesMode('existing')
+    }
+    loadSeries()
+  }, [])
 
   function set(field: string, value: string | number) {
     setForm(f => ({ ...f, [field]: value }))
@@ -152,12 +174,10 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
       {/* Details grid */}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { field:'genre',         label:'Genre',      placeholder:'Roman, BD…' },
-          { field:'year',          label:'Année',      placeholder:'2023',   type:'number' },
-          { field:'pages',         label:'Pages',      placeholder:'320',    type:'number' },
-          { field:'publisher',     label:'Éditeur',    placeholder:'Gallimard' },
-          { field:'series_name',   label:'Série',      placeholder:'Harry Potter' },
-          { field:'series_number', label:'N° Série',   placeholder:'1',      type:'number' },
+          { field:'genre',     label:'Genre',   placeholder:'Roman, BD…' },
+          { field:'year',      label:'Année',   placeholder:'2023', type:'number' },
+          { field:'pages',     label:'Pages',   placeholder:'320',  type:'number' },
+          { field:'publisher', label:'Éditeur', placeholder:'Gallimard' },
         ].map(({ field, label, placeholder, type }) => (
           <div key={field}>
             <label className="block text-xs font-black text-gray-500 mb-1">{label.toUpperCase()}</label>
@@ -168,6 +188,45 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
         <div className="col-span-2">
           <label className="block text-xs font-black text-gray-500 mb-1">ISBN</label>
           <input value={form.isbn} onChange={e => set('isbn', e.target.value)} className="input text-sm" placeholder="978-2-07-036024-5" />
+        </div>
+      </div>
+
+      {/* Série — toggle existante / nouvelle */}
+      <div>
+        <label className="block text-xs font-black text-gray-500 mb-2">SÉRIE</label>
+        {existingSeries.length > 0 && (
+          <div className="flex p-1 bg-gray-100 rounded-2xl mb-2">
+            <button onClick={() => setSeriesMode('existing')}
+              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+                seriesMode === 'existing' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+              }`}>
+              Série existante
+            </button>
+            <button onClick={() => { setSeriesMode('new'); set('series_name', '') }}
+              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+                seriesMode === 'new' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+              }`}>
+              Nouvelle série
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {seriesMode === 'existing' && existingSeries.length > 0 ? (
+            <div className="relative flex-1">
+              <select value={form.series_name} onChange={e => set('series_name', e.target.value)}
+                className="input text-sm appearance-none pr-8 w-full">
+                <option value="">— Aucune série —</option>
+                {existingSeries.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+            </div>
+          ) : (
+            <input value={form.series_name} onChange={e => set('series_name', e.target.value)}
+              className="input text-sm flex-1" placeholder="Nom de la série" />
+          )}
+          <input type="number" value={form.series_number} onChange={e => set('series_number', e.target.value)}
+            className="input text-sm w-24 text-center flex-shrink-0" placeholder="N°" />
         </div>
       </div>
 
