@@ -1,4 +1,4 @@
-export type BookStatus = 'À lire' | 'En cours' | 'Lu' | 'Abandonné'
+export type BookStatus = 'À lire' | 'En cours' | 'Lu' | 'Abandonné' | 'À acquérir'
 export type WishPriority = 'Haute' | 'Moyenne' | 'Basse'
 
 export interface Book {
