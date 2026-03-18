@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react'
 import Image from 'next/image'
 import { GoogleBook } from '@/types'
-import { Search, X, ChevronRight, PenLine, Plus } from 'lucide-react'
+import { Search, X, Plus } from 'lucide-react'
 import { getBestCover, extractYear } from '@/lib/google-books'
 
 interface Props {
@@ -21,24 +21,26 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [source, setSource] = useState<'google' | 'openlibrary'>('google')
-  const inputRef = useRef<HTMLInputElement>(null)
   const [langFr, setLangFr] = useState(true)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  async function doSearch(q = query, p = 0, src = source) {
+  async function doSearch(q = query, p = 0, src = source, fr = langFr) {
     if (!q.trim()) return
     if (p === 0) { setLoading(true); setSearched(true); setResults([]) }
     else setLoadingMore(true)
 
     try {
-      const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}&lang=${langFr ? 'fr' : 'all'}`)
+      const res = await fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}&lang=${fr ? 'fr' : 'all'}`)
       const data: GoogleBook[] = await res.json()
 
-      // Trier par pertinence — les titres qui correspondent exactement en premier
+      // Tri par pertinence — titres qui contiennent le mot cherché en premier
+      const ql = q.toLowerCase()
       const sorted = [...data].sort((a, b) => {
-        const ql = q.toLowerCase()
-        const aExact = a.title.toLowerCase().startsWith(ql) ? 0 : a.title.toLowerCase().includes(ql) ? 1 : 2
-        const bExact = b.title.toLowerCase().startsWith(ql) ? 0 : b.title.toLowerCase().includes(ql) ? 1 : 2
-        return aExact - bExact
+        const aTitle = a.title.toLowerCase()
+        const bTitle = b.title.toLowerCase()
+        const aScore = aTitle.startsWith(ql) ? 0 : aTitle.includes(ql) ? 1 : 2
+        const bScore = bTitle.startsWith(ql) ? 0 : bTitle.includes(ql) ? 1 : 2
+        return aScore - bScore
       })
 
       if (p === 0) setResults(sorted)
@@ -52,25 +54,19 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
 
   function changeSource(s: 'google' | 'openlibrary') {
     setSource(s); setResults([]); setPage(0); setSearched(false)
-    if (query.trim()) doSearch(query, 0, s)
+    if (query.trim()) doSearch(query, 0, s, langFr)
+  }
+
+  function changeLang(fr: boolean) {
+    setLangFr(fr); setResults([]); setPage(0); setSearched(false)
+    if (query.trim()) doSearch(query, 0, source, fr)
   }
 
   return (
     <div className="space-y-3">
       {/* Source toggle */}
-      <div className="flex items-center justify-between px-1">
-  <span className="text-xs font-black text-gray-500">Langue</span>
-  <div className="flex p-0.5 bg-gray-100 rounded-xl">
-    {([['fr','🇫🇷 Français'],['all','🌍 Toutes']] as const).map(([l, label]) => (
-      <button key={l} onClick={() => { setLangFr(l==='fr'); setResults([]); setPage(0) }}
-        className={`px-3 py-1 rounded-xl font-black text-xs transition-all ${
-          (langFr ? l==='fr' : l==='all') ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-        }`}>{label}</button>
-    ))}
-  </div>
-</div>
       <div className="flex p-1 bg-gray-100 rounded-2xl">
-        {([['google', '🔍 Google Books'], ['openlibrary', '📖 Open Library']] as const).map(([s, label]) => (
+        {([['google','🔍 Google Books'],['openlibrary','📖 Open Library']] as const).map(([s, label]) => (
           <button key={s} onClick={() => changeSource(s)}
             className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
               source === s ? 'bg-white text-violet shadow-sm' : 'text-gray-400 hover:text-gray-600'
@@ -80,15 +76,33 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
         ))}
       </div>
 
+      {/* Langue toggle */}
+      <div className="flex items-center justify-between px-1">
+        <span className="text-xs font-black text-gray-500">Langue</span>
+        <div className="flex p-0.5 bg-gray-100 rounded-xl">
+          {([['fr','🇫🇷 Français', true],['all','🌍 Toutes', false]] as const).map(([, label, val]) => (
+            <button key={label} onClick={() => changeLang(val)}
+              className={`px-3 py-1 rounded-xl font-black text-xs transition-all ${
+                langFr === val ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+              }`}>{label}</button>
+          ))}
+        </div>
+      </div>
+
       {/* Search input */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"/>
-        <input ref={inputRef} type="search" value={query}
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
           onChange={e => setQuery(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && doSearch()}
           placeholder="Titre, auteur, ISBN…"
           style={{ paddingLeft: '2.25rem' }}
-          className="input pr-10" autoFocus/>
+          className="input pr-10"
+          autoFocus
+        />
         {query && (
           <button onClick={() => { setQuery(''); setResults([]); setSearched(false); inputRef.current?.focus() }}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -139,20 +153,19 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
                       className="rounded-lg object-cover flex-shrink-0 shadow-sm"/>
                   : <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-violet to-pink flex items-center justify-center text-xl flex-shrink-0">📖</div>
                 }
-                <div className="flex-1 min-w-0" onClick={() => onSelect(book)}>
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(book)}>
                   <p className="font-bold text-sm text-ink line-clamp-2 leading-snug">{book.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{book.authors.join(', ')}</p>
                   <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
                     {year && <span className="text-[11px] bg-amber-light text-amber-dark font-bold px-2 py-0.5 rounded-full">{year}</span>}
                     {book.pageCount && <span className="text-[11px] text-gray-400">{book.pageCount}p</span>}
                     {book.seriesInfo?.shortSeriesBookTitle && (
-                      <span className="text-[11px] bg-violet-light text-violet-dark font-bold px-2 py-0.5 rounded-full">
+                      <span className="text-[11px] bg-violet-light text-violet font-bold px-2 py-0.5 rounded-full">
                         📚 {book.seriesInfo.shortSeriesBookTitle}
                       </span>
                     )}
                   </div>
                 </div>
-                {/* Action buttons */}
                 <div className="flex flex-col gap-1.5 flex-shrink-0">
                   <button onClick={() => onSelect(book)}
                     className="w-8 h-8 rounded-xl bg-violet text-white flex items-center justify-center hover:bg-violet-dark transition-colors"
@@ -171,7 +184,6 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
             )
           })}
 
-          {/* Charger plus */}
           {hasMore && (
             <button onClick={() => doSearch(query, page + 1)} disabled={loadingMore}
               className="w-full py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 font-black text-sm text-gray-500 transition-colors disabled:opacity-50">
@@ -183,7 +195,7 @@ export default function BookSearch({ onSelect, onManual, onAddToWishlist, mode =
 
       <button onClick={onManual}
         className="w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold text-gray-400 hover:text-violet transition-colors">
-        <PenLine size={15}/> Saisir manuellement
+        ✏️ Saisir manuellement
       </button>
     </div>
   )
