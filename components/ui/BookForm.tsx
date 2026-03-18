@@ -57,7 +57,7 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
         .select('series_name')
         .eq('user_id', user.id)
         .not('series_name', 'is', null)
-      const names = [...new Set((data || []).map((b: any) => b.series_name as string))].sort()
+      const names = Array.from(new Set((data || []).map((b: any) => b.series_name as string))).sort()
       setExistingSeries(names)
       if (names.length > 0 && !initial.series_name) setSeriesMode('existing')
     }
