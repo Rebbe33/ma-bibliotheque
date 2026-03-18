@@ -1,6 +1,20 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
+export const metadata = {
+  // ... vos metadata existantes
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Ma Biblio',
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
+}
+
 export const metadata: Metadata = {
   title: 'Ma Bibliothèque 📚',
   description: 'Gérez vos livres et BD avec style !',
