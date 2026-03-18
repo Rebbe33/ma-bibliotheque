@@ -15,6 +15,7 @@ const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À a
 const STATUS_EMOJI: Record<BookStatus, string> = {
   'À lire':'📋', 'En cours':'📖', 'Lu':'✅', 'Abandonné':'💀', 'À acquérir':'🛒'
 }
+const STATUS_ORDER: BookStatus[] = ['À acquérir', 'À lire', 'En cours', 'Lu']
 const STATUS_BG: Record<BookStatus, string> = {
   'Lu': 'bg-mint-light text-mint-dark',
   'En cours': 'bg-amber-light text-amber-dark',
@@ -146,10 +147,22 @@ async function updateBook(id: string, data: Partial<Book>) {
     toast('Supprimé', 'info'); loadBooks()
   }
 
-  async function markRead(id: string) {
-    await supabase.from('bibliotheque_books').update({ status: 'Lu' }).eq('id', id)
-    toast('Marqué comme lu ✅', 'success'); loadBooks()
+ async function markNextStatus(book: Book) {
+  const currentIdx = STATUS_ORDER.indexOf(book.status)
+  // Si déjà "Lu" ou "Abandonné", ne rien faire
+  if (currentIdx === -1 || currentIdx === STATUS_ORDER.length - 1) return
+  const nextStatus = STATUS_ORDER[currentIdx + 1]
+
+  // Si on passe à "À acquérir" → même logique wishlist
+  if (nextStatus === 'À acquérir') {
+    await updateBook(book.id, { status: 'À acquérir' })
+    return
   }
+
+  await supabase.from('bibliotheque_books').update({ status: nextStatus }).eq('id', book.id)
+  toast(`Statut → ${nextStatus} !`, 'success')
+  loadBooks()
+}
 
   return (
     <div className="space-y-4">
@@ -228,7 +241,7 @@ async function updateBook(id: string, data: Partial<Book>) {
               onClick={() => setDetailBook(book)}
               onEdit={e => { e.stopPropagation(); setEditBook(book) }}
               onDelete={e => { e.stopPropagation(); deleteBook(book.id) }}
-              onMarkRead={e => { e.stopPropagation(); markRead(book.id) }}
+              onMarkNextStatus={e => { e.stopPropagation(); markRead(book.id) }}
             />
           ))}
         </div>
