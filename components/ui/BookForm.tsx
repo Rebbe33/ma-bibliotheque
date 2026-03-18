@@ -191,44 +191,50 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
         </div>
       </div>
 
-      {/* Série — toggle existante / nouvelle */}
-      <div>
-        <label className="block text-xs font-black text-gray-500 mb-2">SÉRIE</label>
-        {existingSeries.length > 0 && (
-          <div className="flex p-1 bg-gray-100 rounded-2xl mb-2">
-            <button onClick={() => setSeriesMode('existing')}
-              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
-                seriesMode === 'existing' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-              }`}>
-              Série existante
-            </button>
-            <button onClick={() => { setSeriesMode('new'); set('series_name', '') }}
-              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
-                seriesMode === 'new' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-              }`}>
-              Nouvelle série
-            </button>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          {seriesMode === 'existing' && existingSeries.length > 0 ? (
-            <div className="relative flex-1">
-              <select value={form.series_name} onChange={e => set('series_name', e.target.value)}
-                className="input text-sm appearance-none pr-8 w-full">
-                <option value="">— Aucune série —</option>
-                {existingSeries.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
-            </div>
-          ) : (
-            <input value={form.series_name} onChange={e => set('series_name', e.target.value)}
-              className="input text-sm flex-1" placeholder="Nom de la série" />
-          )}
-          <input type="number" value={form.series_number} onChange={e => set('series_number', e.target.value)}
-            className="input text-sm w-24 text-center flex-shrink-0" placeholder="N°" />
-        </div>
+      {/* Série */}
+<div>
+  <label className="block text-xs font-black text-gray-500 mb-2">SÉRIE</label>
+  {existingSeries.length > 0 && (
+    <div className="flex p-1 bg-gray-100 rounded-2xl mb-2">
+      <button onClick={() => setSeriesMode('existing')}
+        className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+          seriesMode === 'existing' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+        }`}>
+        Série existante
+      </button>
+      <button onClick={() => { setSeriesMode('new'); set('series_name', '') }}
+        className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+          seriesMode === 'new' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+        }`}>
+        Nouvelle série
+      </button>
+    </div>
+  )}
+  <div className="grid grid-cols-[1fr_80px] gap-2">
+    {seriesMode === 'existing' && existingSeries.length > 0 ? (
+      <div className="relative">
+        <select value={form.series_name} onChange={e => set('series_name', e.target.value)}
+          className="input text-sm appearance-none pr-8 w-full">
+          <option value="">— Aucune —</option>
+          {existingSeries.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
       </div>
+    ) : (
+      <input value={form.series_name} onChange={e => set('series_name', e.target.value)}
+        className="input text-sm" placeholder="Nom de la série" />
+    )}
+    <input
+      type="number"
+      value={form.series_number}
+      onChange={e => set('series_number', e.target.value)}
+      className="input text-sm text-center"
+      placeholder="N°"
+      min="0"
+      max="99"
+    />
+  </div>
+</div>
 
       {/* Notes */}
       <div>
