@@ -27,6 +27,7 @@ function WishlistContent() {
   const supabase = createClient()
   const toast = useToast()
   const [wishes, setWishes] = useState<WishItem[]>([])
+  const [allWishes, setAllWishes] = useState<WishItem[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [prioFilter, setPrioFilter] = useState<WishPriority | ''>('')
@@ -38,6 +39,12 @@ function WishlistContent() {
   const loadWishes = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+
+    // Tous les souhaits pour les compteurs des étiquettes
+    const { data: all } = await supabase.from('bibliotheque_wishlist').select('*').eq('user_id', user.id)
+    setAllWishes(all || [])
+
+    // Souhaits filtrés pour l'affichage
     let q = supabase.from('bibliotheque_wishlist').select('*').eq('user_id', user.id)
     if (prioFilter) q = q.eq('priority', prioFilter)
     const { data } = await q.order('date_added', { ascending: false })
@@ -132,19 +139,36 @@ function WishlistContent() {
 
   return (
     <div className="space-y-4">
+
+      {/* Barre de recherche — style inline pour éviter chevauchement icône */}
       <div className="relative">
-        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Rechercher un souhait…" className="input pl-10 pr-9 py-2.5 text-sm" />
-        {query && <button onClick={()=>setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X size={15} className="text-gray-400"/></button>}
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+        <input
+          value={query}
+          onChange={e=>setQuery(e.target.value)}
+          placeholder="Rechercher un souhait…"
+          style={{ paddingLeft: '2.25rem' }}
+          className="input pr-9 py-2.5 text-sm"
+        />
+        {query && (
+          <button onClick={()=>setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+            <X size={15} className="text-gray-400"/>
+          </button>
+        )}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-        <button onClick={()=>setPrioFilter('')} className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${prioFilter===''?'bg-pink text-white shadow-glow-pink':'bg-white text-gray-500 shadow-sm'}`}>
-          Tous · {wishes.length}
+      {/* Priority filter — py-1 pour que les pills ne soient pas rognées */}
+      <div className="flex gap-2 overflow-x-auto py-1 -mx-4 px-4">
+        <button onClick={()=>setPrioFilter('')}
+          className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${prioFilter===''?'bg-pink text-white shadow-glow-pink':'bg-white text-gray-500 shadow-sm'}`}>
+          Tous · {allWishes.length}
         </button>
         {PRIOS.map(p=>(
-          <button key={p} onClick={()=>setPrioFilter(prioFilter===p?'':p)} className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${prioFilter===p?`${PRIO_STYLE[p]} shadow-card ring-2 ring-offset-1 ring-current`:'bg-white text-gray-500 shadow-sm'}`}>
-            {p} · {wishes.filter(w=>w.priority===p).length}
+          <button key={p} onClick={()=>setPrioFilter(prioFilter===p?'':p)}
+            className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
+              prioFilter===p ? `${PRIO_STYLE[p]} shadow-card ring-2 ring-offset-1 ring-current` : 'bg-white text-gray-500 shadow-sm'
+            }`}>
+            {p} · {allWishes.filter(w=>w.priority===p).length}
           </button>
         ))}
       </div>
@@ -155,9 +179,9 @@ function WishlistContent() {
         </div>
       ) : filtered.length===0 ? (
         <div className="card p-10 text-center">
-          <div className="text-5xl mb-3 animate-float inline-block">{wishes.length===0?'✨':'🔍'}</div>
-          <p className="font-black text-lg text-ink">{wishes.length===0?'Liste vide !':'Aucun résultat'}</p>
-          <p className="text-sm text-gray-400 mt-1">{wishes.length===0?'Ajoutez vos envies de lecture !':'Autre filtre ?'}</p>
+          <div className="text-5xl mb-3 animate-float inline-block">{allWishes.length===0?'✨':'🔍'}</div>
+          <p className="font-black text-lg text-ink">{allWishes.length===0?'Liste vide !':'Aucun résultat'}</p>
+          <p className="text-sm text-gray-400 mt-1">{allWishes.length===0?'Ajoutez vos envies de lecture !':'Autre filtre ?'}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -190,14 +214,15 @@ function WishlistContent() {
         </div>
       )}
 
-      <button onClick={()=>{setForm(EMPTY);setStep('search');setShowAdd(true)}} className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-br from-pink to-coral text-white shadow-glow-pink flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
+      <button onClick={()=>{setForm(EMPTY);setStep('search');setShowAdd(true)}}
+        className="fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-gradient-to-br from-pink to-coral text-white shadow-glow-pink flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
         <Plus size={28}/>
       </button>
 
       <BottomSheet open={showAdd||!!editWish} onClose={()=>{setShowAdd(false);setEditWish(null);setForm(EMPTY);setStep('search')}} title={editWish?'Modifier le souhait':'Ajouter un souhait ✨'}>
         {step==='search'&&!editWish ? (
           <div>
-            <BookSearch onSelect={fromGoogle} onManual={()=>setStep('form')}/>
+            <BookSearch onSelect={fromGoogle} onManual={()=>setStep('form')} mode="wishlist"/>
             <button onClick={()=>setShowAdd(false)} className="mt-2 btn btn-ghost w-full">Annuler</button>
           </div>
         ) : <WishForm/>}
