@@ -5,11 +5,12 @@ import AppLayout from '@/components/layout/AppLayout'
 import { Book, BookStatus } from '@/types'
 
 const STATUS_COLOR: Record<BookStatus, string> = {
-  'Lu': '#10b981', 'En cours': '#f59e0b', 'À lire': '#06b6d4', 'Abandonné': '#f97316'
+  'Lu': '#10b981', 'En cours': '#f59e0b', 'À lire': '#06b6d4', 'Abandonné': '#f97316', 'À acquérir': '#123456'
 }
 const STATUS_BG: Record<BookStatus, string> = {
   'Lu': 'from-mint to-lime', 'En cours': 'from-amber to-coral',
-  'À lire': 'from-cyan to-violet', 'Abandonné': 'from-coral to-pink'
+  'À lire': 'from-cyan to-violet', 'Abandonné': 'from-coral to-pink',
+  'À acquérir': 'from-blue to-yellow'
 }
 
 export default function StatsPage() {
@@ -30,7 +31,7 @@ export default function StatsPage() {
   if (loading) return <AppLayout><div className="flex items-center justify-center py-24 text-4xl animate-float">📊</div></AppLayout>
 
   const byStatus = (s: BookStatus) => books.filter(b => b.status === s).length
-  const lu = byStatus('Lu'), ec = byStatus('En cours'), al = byStatus('À lire'), ab = byStatus('Abandonné')
+  const lu = byStatus('Lu'), ec = byStatus('En cours'), al = byStatus('À lire'), ab = byStatus('Abandonné'), aq = byStatus('À acquérir')
   const pages = books.filter(b => b.status === 'Lu' && b.pages).reduce((s, b) => s + (b.pages || 0), 0)
   const rated = books.filter(b => b.rating > 0)
   const avg = rated.length ? (rated.reduce((s,b) => s + b.rating, 0) / rated.length).toFixed(1) : null
