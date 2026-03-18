@@ -1,14 +1,13 @@
 'use client'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
-import { BookOpen, Heart, BarChart2, Settings, Library } from 'lucide-react'
+import { BookOpen, Heart, BarChart2, Library, Users, Settings } from 'lucide-react'
 
 const NAV = [
-  { href: '/library',  label: 'Livres',   icon: BookOpen,  },
-  { href: '/series',   label: 'Séries',   icon: Library,   },
-  { href: '/wishlist', label: 'Souhaits', icon: Heart,     },
-  { href: '/stats',    label: 'Stats',    icon: BarChart2, },
-  { href: '/settings', label: 'Réglages', icon: Settings,  },
+  { href: '/library',  label: 'Livres',   icon: BookOpen },
+  { href: '/series',   label: 'Séries',   icon: Library  },
+  { href: '/wishlist', label: 'Souhaits', icon: Heart    },
+  { href: '/friends',  label: 'Amis',     icon: Users    },
+  { href: '/stats',    label: 'Stats',    icon: BarChart2},
 ]
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +27,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               Ma <span className="text-violet">Biblio</span>
             </span>
           </div>
+          {/* Réglages déplacé dans le header */}
+          <button
+            onClick={() => router.push('/settings')}
+            className={`p-2 rounded-2xl transition-all ${pathname === '/settings' ? 'bg-violet-light' : 'hover:bg-gray-100'}`}>
+            <Settings
+              size={22}
+              strokeWidth={pathname === '/settings' ? 2.5 : 1.8}
+              className={pathname === '/settings' ? 'text-violet' : 'text-gray-400'}
+            />
+          </button>
         </div>
       </header>
 
@@ -45,8 +54,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <button
                 key={href}
                 onClick={() => router.push(href)}
-                className="flex-1 flex flex-col items-center justify-center py-2.5 gap-1 touch-manipulation transition-all"
-              >
+                className="flex-1 flex flex-col items-center justify-center py-2.5 gap-1 touch-manipulation transition-all">
                 <div className={`p-2 rounded-2xl transition-all duration-200 ${active ? 'bg-violet-light shadow-sm' : ''}`}>
                   <Icon
                     size={22}
