@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister'
 
-
-
 export const metadata: Metadata = {
   title: 'Ma Bibliothèque 📚',
   description: 'Gérez vos livres et BD avec style !',
@@ -30,12 +28,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="fr">
-      <body className="halftone-bg min-h-screen">{children}</body>
+      <body className="halftone-bg min-h-screen">
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   )
 }
-
-<body>
-  <ServiceWorkerRegister />
-  {children}
-</body>
