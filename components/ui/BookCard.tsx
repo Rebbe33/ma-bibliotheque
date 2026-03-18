@@ -7,9 +7,10 @@ const STATUS_CHIP: Record<BookStatus, string> = {
   'En cours':   'chip chip-en',
   'À lire':     'chip chip-al',
   'Abandonné':  'chip chip-ab',
+  'À acquérir': 'chip chip-aq',
 }
 const STATUS_EMOJI: Record<BookStatus, string> = {
-  'Lu': '✅', 'En cours': '📖', 'À lire': '📋', 'Abandonné': '💀'
+  'Lu': '✅', 'En cours': '📖', 'À lire': '📋', 'Abandonné': '💀', 'À acquérir': '🛒'
 }
 
 const COVERS = 8
