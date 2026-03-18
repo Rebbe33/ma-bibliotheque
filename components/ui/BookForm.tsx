@@ -14,13 +14,16 @@ interface Props {
   onAddToWishlist?: (book: GoogleBook) => void
 }
 
-const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
-const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀' }
+const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+const STATUS_EMOJI: Record<BookStatus, string> = {
+  'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀', 'À acquérir': '🛒'
+}
 const STATUS_COLORS: Record<BookStatus, string> = {
   'À lire': 'bg-blue-50 text-blue-700 ring-blue-200',
   'En cours': 'bg-amber-light text-amber-dark ring-amber-200',
   'Lu': 'bg-mint-light text-mint-dark ring-green-200',
   'Abandonné': 'bg-red-50 text-red-700 ring-red-200',
+  'À acquérir': 'bg-coral-light text-coral-dark ring-coral-200',
 }
 
 export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishlist }: Props) {
