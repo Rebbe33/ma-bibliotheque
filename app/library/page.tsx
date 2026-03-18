@@ -251,7 +251,7 @@ function LibraryContent() {
 
 function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
   function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%8 }
-  const STATUS_CHIP: Record<BookStatus, string> = { 'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab' }
+  const STATUS_CHIP: Record<BookStatus, string> = { 'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab','À acquérir':'chip chip-aq' }
 
   return (
     <div className="space-y-5 pb-4">
