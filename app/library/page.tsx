@@ -109,7 +109,7 @@ function LibraryContent() {
     <div className="space-y-4">
 
       {/* Status pills — padding vertical pour que les chips ne soient pas rognées */}
-      <div className="flex gap-2 overflow-x-auto py-1 -mx-4 px-4 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto py-0.5 -mx-4 px-4 scrollbar-hide">
         <button onClick={() => setStatusFilter('')}
           className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
             statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
