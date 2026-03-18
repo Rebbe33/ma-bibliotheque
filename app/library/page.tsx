@@ -17,8 +17,6 @@ const STATUS_BG: Record<BookStatus, string> = {
   'Lu': 'bg-mint-light text-mint-dark', 'En cours': 'bg-amber-light text-amber-dark',
   'À lire': 'bg-cyan-light text-cyan-dark', 'Abandonné': 'bg-red-50 text-red-600',
 }
-const COVERS = 8
-function coverIdx(t: string) { let h=0; for (const c of t) h=(h*31+c.charCodeAt(0))&0xfffffff; return h%COVERS }
 
 function LibraryContent() {
   const supabase = createClient()
@@ -38,12 +36,8 @@ function LibraryContent() {
   const loadBooks = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-
-    // Tous les livres pour les compteurs
     const { data: all } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
     setAllBooks(all || [])
-
-    // Livres filtrés+triés pour l'affichage
     let q = supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
     if (statusFilter) q = q.eq('status', statusFilter)
     if (sortBy === 'rating') q = q.order('rating', { ascending: false })
@@ -57,9 +51,14 @@ function LibraryContent() {
 
   useEffect(() => { loadBooks() }, [loadBooks])
 
-  const filtered = books.filter(b =>
-    !query || [b.title, b.author, b.genre||''].some(s => s.toLowerCase().includes(query.toLowerCase()))
-  )
+  // Recherche floue — contient le mot, pas besoin du titre exact
+  const filtered = books.filter(b => {
+    if (!query) return true
+    const q = query.toLowerCase()
+    return [b.title, b.author, b.genre||'', b.series_name||''].some(s =>
+      s.toLowerCase().includes(q)
+    )
+  })
 
   const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
 
@@ -108,8 +107,9 @@ function LibraryContent() {
 
   return (
     <div className="space-y-4">
-      {/* Status pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
+
+      {/* Status pills — padding vertical pour que les chips ne soient pas rognées */}
+      <div className="flex gap-2 overflow-x-auto py-1 -mx-4 px-4 scrollbar-hide">
         <button onClick={() => setStatusFilter('')}
           className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
             statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
@@ -126,12 +126,17 @@ function LibraryContent() {
         ))}
       </div>
 
-      {/* Search row */}
+      {/* Search row — style inline pour éviter que l'icône chevauche le texte */}
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Rechercher un livre…"
-            className="input pl-10 pr-9 py-2.5 text-sm" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Rechercher un livre…"
+            style={{ paddingLeft: '2.25rem' }}
+            className="input pr-9 py-2.5 text-sm"
+          />
           {query && (
             <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
               <X size={15} className="text-gray-400" />
@@ -168,7 +173,7 @@ function LibraryContent() {
         <div className="card p-10 text-center">
           <div className="text-5xl mb-3 animate-float inline-block">{allBooks.length === 0 ? '📚' : '🔍'}</div>
           <p className="font-black text-lg text-ink">{allBooks.length === 0 ? 'Bibliothèque vide !' : 'Aucun résultat'}</p>
-          <p className="text-sm text-gray-400 mt-1">{allBooks.length === 0 ? 'Ajoutez votre premier livre ✨' : 'Essayez un autre filtre'}</p>
+          <p className="text-sm text-gray-400 mt-1">{allBooks.length === 0 ? 'Ajoutez votre premier livre ✨' : 'Essayez un autre terme'}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -217,8 +222,7 @@ function LibraryContent() {
 }
 
 function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
-  const COVERS = 8
-  function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%COVERS }
+  function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%8 }
   const STATUS_CHIP: Record<BookStatus, string> = { 'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab' }
 
   return (
