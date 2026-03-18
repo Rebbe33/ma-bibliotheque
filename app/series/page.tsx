@@ -14,7 +14,8 @@ interface GoogleBookWithMeta extends GoogleBook { checked: boolean; tomeNumber: 
 
 const STATUS_CHIP: Record<string, string> = {
   'Lu': 'chip chip-lu', 'En cours': 'chip chip-en',
-  'À lire': 'chip chip-al', 'Abandonné': 'chip chip-ab'
+  'À lire': 'chip chip-al', 'Abandonné': 'chip chip-ab',
+  'À acquérir': 'chip chip-aq'
 }
 
 // ── Sous-composant édition série ──
@@ -25,8 +26,10 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
   onRemoveBook: (id: string) => void
 }) {
   const [name, setName] = useState(series.name)
-  const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné']
-  const STATUS_EMOJI: Record<BookStatus, string> = { 'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀' }
+  const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+const STATUS_EMOJI: Record<BookStatus, string> = {
+  'À lire':'📋', 'En cours':'📖', 'Lu':'✅', 'Abandonné':'💀', 'À acquérir':'🛒'
+}
   function coverIdx(t: string) { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) & 0xfffffff; return h % 8 }
 
   return (
