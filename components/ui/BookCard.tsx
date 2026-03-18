@@ -62,7 +62,7 @@ export default function BookCard({ book, onClick, onEdit, onDelete, onMarkRead }
           <Edit2 size={13} />
         </button>
         {onMarkRead && book.status !== 'Lu' && (
-          <button onClick={onMarkRead}
+          <button onClick={onMarkNextStatus}
             className="w-8 h-8 rounded-xl bg-mint-light text-mint-dark flex items-center justify-center hover:bg-mint/20 transition-colors">
             <CheckCircle size={13} />
           </button>
