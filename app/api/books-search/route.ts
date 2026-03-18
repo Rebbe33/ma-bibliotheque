@@ -16,7 +16,7 @@ async function searchGoogle(query: string, page = 0, lang = 'fr') {
   const key = process.env.GOOGLE_BOOKS_KEY
   const params = new URLSearchParams({
     q: query,
-    maxResults: '20',
+    maxResults: '40', // On demande plus pour compenser le filtrage
     startIndex: String(page * 20),
     printType: 'books',
     ...(lang !== 'all' ? { langRestrict: lang } : {}),
@@ -25,7 +25,7 @@ async function searchGoogle(query: string, page = 0, lang = 'fr') {
   try {
     const res = await fetch(`https://www.googleapis.com/books/v1/volumes?${params}`)
     const data = await res.json()
-    return (data.items || []).map((item: any) => {
+    const results = (data.items || []).map((item: any) => {
       const v = item.volumeInfo || {}
       return {
         id: 'g_' + item.id,
@@ -38,12 +38,21 @@ async function searchGoogle(query: string, page = 0, lang = 'fr') {
         imageLinks: v.imageLinks,
         industryIdentifiers: v.industryIdentifiers,
         seriesInfo: v.seriesInfo,
+        language: v.language, // ← récupérer la langue
         source: 'google',
       }
     })
+
+    // Filtrage strict par langue si demandé
+    if (lang !== 'all') {
+      const filtered = results.filter((b: any) => b.language === lang)
+      // Si le filtrage strict donne trop peu de résultats, on garde le filtrage souple
+      return (filtered.length >= 5 ? filtered : results).slice(0, 20)
+    }
+
+    return results.slice(0, 20)
   } catch { return [] }
 }
-
 async function searchOpenLibrary(query: string, page = 0) {
   const params = new URLSearchParams({
     q: query,
