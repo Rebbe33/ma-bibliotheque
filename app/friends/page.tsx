@@ -90,6 +90,8 @@ function FriendsContent() {
       return { ...f, profile: profile || undefined }
     }))
 
+    
+
     setFriends(enriched.filter(f => f.status === 'accepted'))
     setPendingReceived(enriched.filter(f => f.status === 'pending' && f.addressee_id === user.id))
     setPendingSent(enriched.filter(f => f.status === 'pending' && f.requester_id === user.id))
@@ -152,6 +154,13 @@ function FriendsContent() {
     toast('Ami retiré', 'info')
     loadFriendships()
   }
+
+  async function cancelRequest(friendshipId: string) {
+  if (!confirm('Annuler cette demande ?')) return
+  await supabase.from('bibliotheque_friendships').delete().eq('id', friendshipId)
+  toast('Demande annulée', 'info')
+  loadFriendships()
+}
 
   async function viewWishlist(friend: FriendProfile) {
     setViewingFriend(friend)
@@ -303,9 +312,16 @@ function FriendsContent() {
                   <p className="font-black text-sm text-ink">{getDisplayName(f.profile)}</p>
                   <p className="text-xs text-gray-400">Demande envoyée…</p>
                 </div>
-                <span className="text-[11px] font-black px-2 py-1 rounded-full bg-amber-light text-amber-dark flex-shrink-0">
-                  En attente
-                </span>
+                <div className="flex items-center gap-2 flex-shrink-0">
+  <span className="text-[11px] font-black px-2 py-1 rounded-full bg-amber-light text-amber-dark">
+    En attente
+  </span>
+  <button onClick={() => cancelRequest(f.id)}
+    className="w-7 h-7 rounded-xl bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-100 transition-colors"
+    title="Annuler la demande">
+    <X size={13}/>
+  </button>
+</div>
               </div>
             </div>
           ))}
