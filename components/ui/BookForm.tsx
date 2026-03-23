@@ -95,21 +95,7 @@ async function handleSave() {
   if (!form.title.trim() || !form.author.trim()) return
   setSaving(true)
 
-  // Si "À acquérir" → passer par onAddToWishlist au lieu de onSave
-  if (form.status === 'À acquérir' && onAddToWishlist) {
-    const fakeGoogleBook = {
-      id: form.google_books_id || '',
-      title: form.title.trim(),
-      authors: [form.author.trim()],
-      publishedDate: form.year || '',
-      imageLinks: form.cover_url ? { thumbnail: form.cover_url } : undefined,
-    } as any
-    await onAddToWishlist(fakeGoogleBook)
-    setSaving(false)
-    return
-  }
-
-  await onSave({
+  const bookData = {
     title: form.title.trim(),
     author: form.author.trim(),
     genre: form.genre.trim() || undefined,
@@ -124,7 +110,23 @@ async function handleSave() {
     rating: form.rating,
     notes: form.notes.trim() || undefined,
     google_books_id: form.google_books_id || undefined,
-  })
+  }
+
+  // Sauvegarder dans la bibliothèque dans tous les cas
+  await onSave(bookData)
+
+  // Si "À acquérir" → aussi ajouter à la wishlist
+  if (form.status === 'À acquérir' && onAddToWishlist) {
+    const fakeGoogleBook = {
+      id: form.google_books_id || '',
+      title: form.title.trim(),
+      authors: [form.author.trim()],
+      publishedDate: form.year || '',
+      imageLinks: form.cover_url ? { thumbnail: form.cover_url } : undefined,
+    } as any
+    await onAddToWishlist(fakeGoogleBook)
+  }
+
   setSaving(false)
 }
 
