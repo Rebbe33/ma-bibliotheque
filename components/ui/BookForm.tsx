@@ -91,27 +91,42 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
     setStep('form')
   }
 
-  async function handleSave() {
-    if (!form.title.trim() || !form.author.trim()) return
-    setSaving(true)
-    await onSave({
+async function handleSave() {
+  if (!form.title.trim() || !form.author.trim()) return
+  setSaving(true)
+
+  // Si "À acquérir" → passer par onAddToWishlist au lieu de onSave
+  if (form.status === 'À acquérir' && onAddToWishlist) {
+    const fakeGoogleBook = {
+      id: form.google_books_id || '',
       title: form.title.trim(),
-      author: form.author.trim(),
-      genre: form.genre.trim() || undefined,
-      year: form.year ? parseInt(form.year) : undefined,
-      pages: form.pages ? parseInt(form.pages) : undefined,
-      publisher: form.publisher.trim() || undefined,
-      isbn: form.isbn.trim() || undefined,
-      series_name: form.series_name.trim() || undefined,
-      series_number: form.series_number ? parseFloat(form.series_number) : undefined,
-      cover_url: form.cover_url.trim() || undefined,
-      status: form.status,
-      rating: form.rating,
-      notes: form.notes.trim() || undefined,
-      google_books_id: form.google_books_id || undefined,
-    })
+      authors: [form.author.trim()],
+      publishedDate: form.year || '',
+      imageLinks: form.cover_url ? { thumbnail: form.cover_url } : undefined,
+    } as any
+    await onAddToWishlist(fakeGoogleBook)
     setSaving(false)
+    return
   }
+
+  await onSave({
+    title: form.title.trim(),
+    author: form.author.trim(),
+    genre: form.genre.trim() || undefined,
+    year: form.year ? parseInt(form.year) : undefined,
+    pages: form.pages ? parseInt(form.pages) : undefined,
+    publisher: form.publisher.trim() || undefined,
+    isbn: form.isbn.trim() || undefined,
+    series_name: form.series_name.trim() || undefined,
+    series_number: form.series_number ? parseFloat(form.series_number) : undefined,
+    cover_url: form.cover_url.trim() || undefined,
+    status: form.status,
+    rating: form.rating,
+    notes: form.notes.trim() || undefined,
+    google_books_id: form.google_books_id || undefined,
+  })
+  setSaving(false)
+}
 
   if (step === 'search') return (
     <div>
