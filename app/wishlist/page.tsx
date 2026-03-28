@@ -137,13 +137,50 @@ function WishlistContent() {
   }
 
   async function moveToLibrary(w: WishItem) {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('bibliotheque_books').insert({ user_id:user.id, title:w.title, author:w.author||'', genre:w.genre, status:'À lire', rating:0, notes:w.notes, cover_url:w.cover_url, google_books_id:w.google_books_id, year:w.year })
-    await supabase.from('bibliotheque_wishlist').delete().eq('id', w.id)
-    toast('Ajouté à ta bibliothèque ! 📚', 'success'); loadWishes()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Vérifier si le livre existe déjà dans la bibliothèque
+  const { data: existing } = await supabase
+    .from('bibliotheque_books')
+    .select('id, status, series_name')
+    .eq('user_id', user.id)
+    .eq('title', w.title)
+    .maybeSingle()
+
+  if (existing) {
+    // Le livre existe déjà → juste mettre à jour le statut
+    await supabase
+      .from('bibliotheque_books')
+      .update({ status: 'À lire' })
+      .eq('id', existing.id)
+    toast(
+      existing.series_name
+        ? `Statut mis à jour dans "${existing.series_name}" ! 📚`
+        : 'Statut mis à jour → À lire ! 📚',
+      'success'
+    )
+  } else {
+    // Le livre n'existe pas → l'ajouter normalement
+    await supabase.from('bibliotheque_books').insert({
+      user_id: user.id,
+      title: w.title,
+      author: w.author || '',
+      genre: w.genre,
+      status: 'À lire',
+      rating: 0,
+      notes: w.notes,
+      cover_url: w.cover_url,
+      google_books_id: w.google_books_id,
+      year: w.year,
+    })
+    toast('Ajouté à ta bibliothèque ! 📚', 'success')
   }
 
+  // Dans tous les cas, supprimer de la wishlist
+  await supabase.from('bibliotheque_wishlist').delete().eq('id', w.id)
+  loadWishes()
+}
   function openEdit(w: WishItem) {
     setForm({ title:w.title, author:w.author||'', genre:w.genre||'', priority:w.priority, where_to_find:w.where_to_find||'', notes:w.notes||'', cover_url:w.cover_url||'', google_books_id:w.google_books_id||'', year:w.year })
     setStep('form'); setEditWish(w)
