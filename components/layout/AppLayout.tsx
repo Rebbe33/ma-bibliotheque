@@ -2,11 +2,6 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
-import { BookOpen, Heart, Users, BarChart2, Dices, BookMarked } from 'lucide-react'
-'use client'
-import { useState, useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase'
 import { BookOpen, Heart, Users, BarChart2, Dices, BookMarked, Library } from 'lucide-react'
 
 const NAV = [
