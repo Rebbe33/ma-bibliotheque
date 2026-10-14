@@ -1,4 +1,4 @@
-export type BookStatus = 'À lire' | 'En cours' | 'Lu' | 'Abandonné' | 'À acquérir'
+export type BookStatus = 'À lire' | 'En cours' | 'Lu' | 'Abandonné' | 'Prêté'
 export type WishPriority = 'Haute' | 'Moyenne' | 'Basse'
 
 export interface Book {
@@ -20,6 +20,7 @@ export interface Book {
   google_books_id?: string
   date_added: string
   date_updated: string
+  borrower_name?: string
 }
 
 export interface WishItem {
