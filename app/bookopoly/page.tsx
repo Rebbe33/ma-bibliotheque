@@ -3,54 +3,100 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import AppLayout from '@/components/layout/AppLayout'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
-import { CheckCircle2, Circle, BookOpen, Trophy, X } from 'lucide-react'
+import { X, CheckCircle2, BookOpen, Dices } from 'lucide-react'
 
-interface Book { id: string; title: string; author: string; cover_url?: string }
+interface Book { id: string; title: string; author: string }
 interface CompletedCase { case_id: string; book_id?: string; completed_at: string }
 
-// Cases du plateau dans l'ordre (sens horaire depuis coin haut-gauche)
+// 11 cases par côté (incluant les coins) = 40 cases total comme Monopoly
+// Coins : indices 0 (BG), 10 (BD), 20 (HD), 30 (HG)
+// Bas (BG→BD) : 0-10
+// Droite (BD→HD) : 10-20
+// Haut (HD→HG) : 20-30
+// Gauche (HG→BG) : 30-40 (=0)
+
 const CASES = [
-  // Rangée du haut (gauche → droite)
-  { id: 'book-sale', label: 'Book Sale!', emoji: '🛍️', color: 'bg-amber-light text-amber-dark', corner: true },
-  { id: 'highest-ratings', label: 'Highest # of Ratings', emoji: '⭐', color: 'bg-blue-50 text-blue-700' },
-  { id: 'surprise', label: '?', emoji: '❓', color: 'bg-purple-50 text-purple-700' },
-  { id: 'highest-avg', label: 'Highest Avg Rating', emoji: '🏅', color: 'bg-yellow-50 text-yellow-700' },
-  { id: 'shortest', label: 'Shortest Book', emoji: '📄', color: 'bg-green-50 text-green-700' },
-  { id: 'travel-abroad', label: 'Travel Abroad', emoji: '✈️', color: 'bg-sky-50 text-sky-700' },
-  { id: 'nature', label: 'Nature', emoji: '🌿', color: 'bg-emerald-50 text-emerald-700' },
-  { id: 'society', label: 'Society', emoji: '🌍', color: 'bg-orange-50 text-orange-700' },
-  { id: 'library-fine-top', label: 'Library Fine', emoji: '💰', color: 'bg-red-50 text-red-600' },
-  { id: 'times-of-life', label: 'Times of Life', emoji: '⏳', color: 'bg-rose-50 text-rose-700' },
-  // Coin haut-droit
-  { id: 'go-to-book-ban', label: 'Go to Book Ban!', emoji: '🚫', color: 'bg-red-100 text-red-700', corner: true },
-  // Rangée droite (haut → bas)
-  { id: 'most-recent', label: 'Most Recently Added', emoji: '🆕', color: 'bg-cyan-50 text-cyan-700' },
-  { id: 'longest-shelved', label: 'Longest Shelved', emoji: '📚', color: 'bg-indigo-50 text-indigo-700' },
-  { id: 'partner-pick', label: 'Partner Pick', emoji: '💑', color: 'bg-pink-50 text-pink-700' },
-  { id: 'longest', label: 'Longest Book', emoji: '📖', color: 'bg-violet-50 text-violet-700' },
-  { id: 'travel-away', label: 'Travel Away', emoji: '🧳', color: 'bg-sky-50 text-sky-700' },
-  { id: 'contemporary', label: 'Contemporary Fiction', emoji: '🏙️', color: 'bg-gray-50 text-gray-700' },
-  { id: 'award-winner', label: 'Award Winner', emoji: '🏆', color: 'bg-amber-50 text-amber-700' },
-  { id: 'classics', label: 'Classics', emoji: '🏛️', color: 'bg-stone-50 text-stone-700' },
-  { id: 'fantasy-scifi', label: 'Fantasy or Sci-Fi', emoji: '🚀', color: 'bg-purple-50 text-purple-700' },
-  // Coin bas-droit
-  { id: 'book-ban', label: 'Book Ban!', emoji: '📵', color: 'bg-red-100 text-red-700', corner: true },
-  // Rangée du bas (droite → gauche)
-  { id: 'library-fine-bottom', label: 'Library Fine', emoji: '💰', color: 'bg-red-50 text-red-600' },
-  { id: 'travel-afar', label: 'Travel Afar', emoji: '🌏', color: 'bg-sky-50 text-sky-700' },
-  { id: 'relationships', label: 'Relationships', emoji: '❤️', color: 'bg-rose-50 text-rose-700' },
-  { id: 'war', label: 'War', emoji: '⚔️', color: 'bg-slate-50 text-slate-700' },
-  { id: 'tradition-change', label: 'Tradition or Change', emoji: '🔄', color: 'bg-teal-50 text-teal-700' },
-  { id: 'published-this-year', label: 'Published This Year', emoji: '📅', color: 'bg-lime-50 text-lime-700' },
-  { id: 'recommended', label: 'Recommended', emoji: '👍', color: 'bg-green-50 text-green-700' },
-  { id: 'part-of-series', label: 'Part of a Series', emoji: '🔢', color: 'bg-blue-50 text-blue-700' },
-  { id: 'travel-along', label: 'Travel Along', emoji: '🗺️', color: 'bg-sky-50 text-sky-700' },
-  // Coin bas-gauche
-  { id: 'ya-children', label: 'YA / Children\'s', emoji: '🧒', color: 'bg-yellow-50 text-yellow-700', corner: true },
-  // Rangée gauche (bas → haut)
-  { id: 'mystery', label: 'Mystery', emoji: '🔍', color: 'bg-gray-50 text-gray-700' },
-  { id: 'historical', label: 'Historical Fiction', emoji: '📜', color: 'bg-amber-50 text-amber-700' },
+  // BAS — gauche vers droite (index 0 = coin bas-gauche)
+  { id: 'ya-children',       label: "YA / Children's",       emoji: '🧒', corner: true  },
+  { id: 'mystery',           label: 'Mystery',               emoji: '🔍'                },
+  { id: 'historical',        label: 'Historical Fiction',    emoji: '📜'                },
+  { id: 'travel-along',      label: 'Travel Along',          emoji: '🗺️'               },
+  { id: 'part-of-series',    label: 'Part of a Series',      emoji: '🔢'                },
+  { id: 'recommended',       label: 'Recommended',           emoji: '👍'                },
+  { id: 'published-this-year',label: 'Published This Year',  emoji: '📅'                },
+  { id: 'tradition-change',  label: 'Tradition or Change',   emoji: '🔄'                },
+  { id: 'war',               label: 'War',                   emoji: '⚔️'               },
+  { id: 'relationships',     label: 'Relationships',         emoji: '❤️'               },
+  // Coin bas-droite
+  { id: 'book-ban',          label: 'Book Ban!',             emoji: '📵', corner: true  },
+
+  // DROITE — bas vers haut
+  { id: 'travel-afar',       label: 'Travel Afar',           emoji: '🌏'                },
+  { id: 'library-fine-bottom',label: 'Library Fine',         emoji: '💰'                },
+  { id: 'fantasy-scifi',     label: 'Fantasy or Sci-Fi',     emoji: '🚀'                },
+  { id: 'classics',          label: 'Classics',              emoji: '🏛️'               },
+  { id: 'award-winner',      label: 'Award Winner',          emoji: '🏆'                },
+  { id: 'contemporary',      label: 'Contemporary Fiction',  emoji: '🏙️'               },
+  { id: 'travel-away',       label: 'Travel Away',           emoji: '🧳'                },
+  { id: 'longest',           label: 'Longest Book',          emoji: '📖'                },
+  { id: 'partner-pick',      label: 'Partner Pick',          emoji: '💑'                },
+  // Coin haut-droite
+  { id: 'go-to-book-ban',    label: 'Go to Book Ban!',       emoji: '🚫', corner: true  },
+
+  // HAUT — droite vers gauche
+  { id: 'longest-shelved',   label: 'Longest Shelved',       emoji: '📚'                },
+  { id: 'most-recent',       label: 'Most Recently Added',   emoji: '🆕'                },
+  { id: 'times-of-life',     label: 'Times of Life',         emoji: '⏳'                },
+  { id: 'library-fine-top',  label: 'Library Fine',          emoji: '💰'                },
+  { id: 'society',           label: 'Society',               emoji: '🌍'                },
+  { id: 'nature',            label: 'Nature',                emoji: '🌿'                },
+  { id: 'travel-abroad',     label: 'Travel Abroad',         emoji: '✈️'               },
+  { id: 'shortest',          label: 'Shortest Book',         emoji: '📄'                },
+  { id: 'highest-avg',       label: 'Highest Avg Rating',    emoji: '🏅'                },
+  // Coin haut-gauche
+  { id: 'go-book-sale',      label: 'Book Sale!',            emoji: '🛍️', corner: true },
+
+  // GAUCHE — haut vers bas
+  { id: 'surprise',          label: '?',                     emoji: '❓'                },
+  { id: 'highest-ratings',   label: 'Highest # of Ratings',  emoji: '⭐'                },
 ]
+// Total = 34 cases (pas exactement 40 — on s'adapte à tes cases réelles)
+
+// Répartition visuelle : 9 cases par côté entre les 4 coins
+const SIDE_COUNT = Math.floor((CASES.length - 4) / 4) // cases non-coin par côté
+// Coins sont aux positions 0, S+1, 2*(S+1), 3*(S+1) où S = SIDE_COUNT
+
+// On crée une disposition fixe adaptée à nos 34 cases
+// Bas : cases[0..8] (9 + coin gauche = index 0, coin droit = index 9)
+// Droite : cases[9..18]
+// Haut : cases[18..27]
+// Gauche : cases[27..33] + retour à 0
+
+// Répartition réelle avec 34 cases :
+// On fait 4 coins + 30 cases de côté = 4 * 7,5 → on ajuste à 4 côtés de 8 + 4 coins = 36
+// On garde les 34 cases telles quelles et on répartit :
+// Bas (BG→BD) : indices 0-8  (9 cases dont le coin 0 et le coin 8)
+// Droite (BD→HD) : indices 8-16 (le coin 8 est partagé)
+// Haut (HD→HG) : indices 16-24
+// Gauche (HG→BG) : indices 24-33+0
+
+// Simplification : on mappe directement sur 4 rangées
+const BOTTOM = CASES.slice(0, 9)     // index 0 (coin BG) → 8 (avant coin BD) + coin BD est à index 9
+const CORNER_BR = CASES[9]
+const RIGHT = CASES.slice(10, 19)    // 9 cases droite (haut)
+const CORNER_TR = CASES[19]
+const TOP_RAW = CASES.slice(20, 29)  // 9 cases haut (de droite à gauche, on les inverse à l'affichage)
+const CORNER_TL = CASES[29]
+const LEFT_RAW = CASES.slice(30, 34) // 4 cases gauche restantes
+const CORNER_BL = CASES[0]           // le coin BG est déjà dans BOTTOM[0]
+
+// Pour l'affichage du plateau :
+// Rangée TOP = [CORNER_TL, ...TOP_RAW inversé, CORNER_TR] → mais on veut gauche→droite
+// Rangée BOTTOM = [CORNER_BL, ...BOTTOM.slice(1), CORNER_BR] → gauche→droite
+const TOP_ROW = [CORNER_TL, ...TOP_RAW.slice().reverse(), CORNER_TR]
+const BOTTOM_ROW = [CORNER_BL, ...BOTTOM.slice(1), CORNER_BR]
+const RIGHT_COL = RIGHT  // bas→haut quand on lit de haut en bas = on les inverse
+const LEFT_COL = [...LEFT_RAW].reverse() // idem
 
 function BookopolyContent() {
   const supabase = createClient()
@@ -59,8 +105,13 @@ function BookopolyContent() {
   const [completed, setCompleted] = useState<CompletedCase[]>([])
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeCase, setActiveCase] = useState<string | null>(null)
+
+  // État du dé
+  const [activeCase, setActiveCase] = useState<typeof CASES[0] | null>(null)
+  const [rolling, setRolling] = useState(false)
+  const [diceValue, setDiceValue] = useState(1)
   const [bookSearch, setBookSearch] = useState('')
+  const [needsValidation, setNeedsValidation] = useState(false) // case tirée, attend validation
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -69,7 +120,7 @@ function BookopolyContent() {
     const [{ data: comp }, { data: bks }] = await Promise.all([
       supabase.from('bibliotheque_bookopoly').select('*').eq('user_id', user.id),
       supabase.from('bibliotheque_books')
-        .select('id, title, author, cover_url')
+        .select('id, title, author')
         .eq('user_id', user.id)
         .eq('status', 'Lu')
         .order('title'),
@@ -82,102 +133,114 @@ function BookopolyContent() {
 
   useEffect(() => { loadData() }, [loadData])
 
-  const completedMap = Object.fromEntries(completed.map(c => [c.case_id, c]))
+  const completedIds = new Set(completed.map(c => c.case_id))
+  const remaining = CASES.filter(c => !completedIds.has(c.id))
   const totalCompleted = completed.length
   const progress = Math.round((totalCompleted / CASES.length) * 100)
 
-  async function toggleCase(caseId: string, bookId?: string) {
+  // Dés emoji
+  const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅']
+
+  async function rollDice() {
+    if (remaining.length === 0) { toast('Toutes les cases sont complétées ! 🎉', 'success'); return }
+    if (needsValidation) { toast('Valide d\'abord la case en cours !', 'error'); return }
+
+    setRolling(true)
+    setActiveCase(null)
+
+    // Animation dé
+    let count = 0
+    const interval = setInterval(() => {
+      setDiceValue(Math.floor(Math.random() * 6) + 1)
+      count++
+      if (count >= 12) {
+        clearInterval(interval)
+        setRolling(false)
+        // Tirer une case aléatoire parmi les non-complétées
+        const picked = remaining[Math.floor(Math.random() * remaining.length)]
+        setActiveCase(picked)
+        setNeedsValidation(true)
+        setBookSearch('')
+      }
+    }, 80)
+  }
+
+  async function validateCase(bookId?: string) {
+    if (!activeCase) return
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    if (completedMap[caseId]) {
-      // Décocher
-      await supabase.from('bibliotheque_bookopoly').delete()
-        .eq('user_id', user.id).eq('case_id', caseId)
-      toast('Case décochée', 'info')
-    } else {
-      // Cocher
-      await supabase.from('bibliotheque_bookopoly').insert({
-        user_id: user.id,
-        case_id: caseId,
-        book_id: bookId || null,
-        completed_at: new Date().toISOString(),
-      })
-      toast('Case complétée ! 🎉', 'success')
-    }
+    const { error } = await supabase.from('bibliotheque_bookopoly').upsert({
+      user_id: user.id,
+      case_id: activeCase.id,
+      book_id: bookId || null,
+      completed_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,case_id' })
+
+    if (error) { toast('Erreur', 'error'); return }
+    toast('Case complétée ! 🎉', 'success')
+    setNeedsValidation(false)
     setActiveCase(null)
     setBookSearch('')
     loadData()
   }
 
-  async function linkBook(caseId: string, bookId: string) {
+  async function uncomplete(caseId: string) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    await supabase.from('bibliotheque_bookopoly').delete().eq('user_id', user.id).eq('case_id', caseId)
+    toast('Case décochée', 'info')
+    loadData()
+  }
 
-    if (completedMap[caseId]) {
-      // Mettre à jour le livre lié
-      await supabase.from('bibliotheque_bookopoly').update({ book_id: bookId })
-        .eq('user_id', user.id).eq('case_id', caseId)
-    } else {
-      await supabase.from('bibliotheque_bookopoly').insert({
-        user_id: user.id,
-        case_id: caseId,
-        book_id: bookId,
-        completed_at: new Date().toISOString(),
-      })
-    }
-    toast('Livre lié à la case ! 📖', 'success')
+  function skipCase() {
+    // On skip la case (on peut relancer sans valider)
+    setNeedsValidation(false)
     setActiveCase(null)
     setBookSearch('')
-    loadData()
+    toast('Case passée — relance le dé !', 'info')
   }
 
   const filteredBooks = books.filter(b =>
-    !bookSearch || b.title.toLowerCase().includes(bookSearch.toLowerCase()) || b.author.toLowerCase().includes(bookSearch.toLowerCase())
+    !bookSearch || b.title.toLowerCase().includes(bookSearch.toLowerCase()) ||
+    b.author.toLowerCase().includes(bookSearch.toLowerCase())
   )
 
-  const activeCaseData = activeCase ? CASES.find(c => c.id === activeCase) : null
-  const activeCaseCompleted = activeCase ? completedMap[activeCase] : null
-
-  // Layout Monopoly : on affiche le board en grille avec les cases sur les bords
-  // Haut: indices 0-10 (11 cases)
-  // Droite: indices 11-19 (9 cases)
-  // Bas: indices 21-30 (10 cases, inversé)
-  // Gauche: indices 31-32 (2 cases, inversé) + coins 20, 30
-  // On regroupe par côté pour simplifier
-
-  const topRow = CASES.slice(0, 11)    // 11 cases dont coins 0 et 10
-  const rightCol = CASES.slice(11, 20)  // 9 cases (entre coins)
-  const bottomRow = CASES.slice(20, 31) // 11 cases dont coins 20 et 30
-  const leftCol = CASES.slice(31, 33)   // 2 cases restantes
-
-  function CaseSquare({ c, size = 'sm' }: { c: typeof CASES[0], size?: 'sm' | 'corner' }) {
-    const done = !!completedMap[c.id]
-    const linkedBook = done && completedMap[c.id].book_id
-      ? books.find(b => b.id === completedMap[c.id].book_id)
-      : null
+  // Composant case du plateau
+  function Square({ c, vertical = false }: { c: typeof CASES[0]; vertical?: boolean }) {
+    const done = completedIds.has(c.id)
+    const isActive = activeCase?.id === c.id
+    const compEntry = completed.find(x => x.case_id === c.id)
+    const linkedBook = compEntry?.book_id ? books.find(b => b.id === compEntry.book_id) : null
 
     return (
       <button
-        onClick={() => setActiveCase(activeCase === c.id ? null : c.id)}
-        className={`relative flex flex-col items-center justify-center p-1 border border-gray-200 rounded-lg transition-all hover:shadow-sm active:scale-95 ${
-          size === 'corner' ? 'w-14 h-14' : 'flex-1 h-14 min-w-0'
-        } ${done ? 'bg-green-50 border-green-300' : 'bg-white'} ${
-          activeCase === c.id ? 'ring-2 ring-violet' : ''
-        }`}
+        onClick={() => {
+          if (done) uncomplete(c.id)
+        }}
+        className={`
+          relative flex flex-col items-center justify-center text-center
+          border transition-all select-none
+          ${c.corner ? 'w-12 h-12 flex-shrink-0 rounded-lg' : vertical ? 'w-12 flex-1 rounded-md' : 'flex-1 h-12 rounded-md'}
+          ${done ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200'}
+          ${isActive ? 'ring-2 ring-violet border-violet shadow-sm scale-105 z-10' : ''}
+        `}
+        title={c.label}
       >
-        <span className="text-base leading-none">{c.emoji}</span>
-        <span className={`text-[7px] font-bold leading-tight text-center mt-0.5 ${done ? 'text-green-700' : 'text-gray-500'} line-clamp-2`}>
-          {c.label}
-        </span>
+        <span className={c.corner ? 'text-xl' : 'text-sm'}>{c.emoji}</span>
+        {!c.corner && (
+          <span className={`text-[6px] font-bold leading-tight px-0.5 line-clamp-2 ${done ? 'text-green-600' : 'text-gray-400'}`}>
+            {c.label}
+          </span>
+        )}
         {done && (
-          <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full flex items-center justify-center">
-            <CheckCircle2 size={10} className="text-white" />
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+            <span className="text-white text-[6px]">✓</span>
           </div>
         )}
-        {linkedBook && (
-          <div className="absolute -bottom-1 -left-1 w-3.5 h-3.5 bg-violet rounded-full flex items-center justify-center">
-            <BookOpen size={8} className="text-white" />
+        {isActive && (
+          <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-violet rounded-full flex items-center justify-center animate-bounce">
+            <span className="text-white text-[8px]">🎲</span>
           </div>
         )}
       </button>
@@ -190,160 +253,168 @@ function BookopolyContent() {
         <h1 className="font-display font-black text-2xl text-ink">Bookopoly 🎲</h1>
         <div className="text-right">
           <p className="font-black text-violet">{totalCompleted}/{CASES.length}</p>
-          <p className="text-[10px] font-bold text-gray-400">CASES</p>
+          <p className="text-[10px] font-bold text-gray-400">COMPLÉTÉES</p>
         </div>
       </div>
 
       {/* Barre de progression */}
       <div className="card p-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-black text-gray-500">Progression</span>
           <span className="text-xs font-black text-violet">{progress}%</span>
         </div>
-        <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-violet to-pink rounded-full transition-all duration-700"
-            style={{ width: `${progress}%` }}
-          />
+        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full bg-gradient-to-r from-violet to-pink rounded-full transition-all duration-700"
+            style={{ width: `${progress}%` }} />
         </div>
-        {totalCompleted === CASES.length && (
-          <p className="text-center text-xs font-black text-amber-600 mt-2">
-            🏆 Challenge complété ! Félicitations !
-          </p>
+        {remaining.length === 0 && (
+          <p className="text-center text-xs font-black text-amber-600 mt-2">🏆 Challenge complété !</p>
         )}
       </div>
 
       {/* Plateau de jeu */}
       {loading ? (
-        <div className="card h-64 animate-pulse bg-gray-50 flex items-center justify-center">
-          <p className="text-gray-400 text-sm">Chargement du plateau…</p>
+        <div className="card h-72 animate-pulse bg-gray-50 flex items-center justify-center">
+          <p className="text-gray-400 text-sm">Chargement…</p>
         </div>
       ) : (
-        <div className="card p-2 overflow-hidden">
-          {/* Rangée du haut */}
+        <div className="card p-1.5 bg-white">
+          {/* Rangée du HAUT */}
           <div className="flex gap-0.5 mb-0.5">
-            {topRow.map(c => <CaseSquare key={c.id} c={c} size={c.corner ? 'corner' : 'sm'} />)}
+            {TOP_ROW.map(c => <Square key={c.id} c={c} />)}
           </div>
 
-          {/* Zone centrale + colonnes */}
+          {/* Zone centrale avec colonnes gauche et droite */}
           <div className="flex gap-0.5">
-            {/* Colonne gauche */}
-            <div className="flex flex-col gap-0.5 w-14 flex-shrink-0">
-              {[...leftCol].reverse().map(c => (
-                <CaseSquare key={c.id} c={c} size="corner" />
-              ))}
+            {/* Colonne GAUCHE (haut→bas dans l'affichage) */}
+            <div className="flex flex-col gap-0.5">
+              {LEFT_COL.map(c => <Square key={c.id} c={c} vertical />)}
             </div>
 
-            {/* Zone centrale */}
-            <div className="flex-1 rounded-xl bg-gradient-to-br from-violet-light to-pink-light flex flex-col items-center justify-center p-3 min-h-[120px]">
-              <div className="text-3xl mb-1">🎲</div>
-              <p className="font-display font-black text-violet text-sm text-center">Bookopoly</p>
-              <p className="text-[10px] text-gray-500 font-bold text-center mt-1">
-                {totalCompleted} case{totalCompleted !== 1 ? 's' : ''} complétée{totalCompleted !== 1 ? 's' : ''}
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1 justify-center">
-                {[...Array(Math.min(totalCompleted, 10))].map((_, i) => (
-                  <span key={i} className="text-xs">⭐</span>
-                ))}
-                {totalCompleted > 10 && <span className="text-[10px] text-gray-400 font-bold">+{totalCompleted - 10}</span>}
-              </div>
+            {/* Centre */}
+            <div className="flex-1 rounded-xl bg-gradient-to-br from-violet-light via-pink-light to-violet-light flex flex-col items-center justify-center gap-2 py-4 min-h-[160px]">
+              {/* Dé animé */}
+              <button
+                onClick={rollDice}
+                disabled={rolling || (needsValidation && !!activeCase)}
+                className={`
+                  text-5xl transition-all duration-100 select-none
+                  ${rolling ? 'animate-spin' : 'hover:scale-110 active:scale-90'}
+                  ${needsValidation && !rolling ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+                `}
+              >
+                {DICE_FACES[diceValue - 1]}
+              </button>
+
+              <p className="font-display font-black text-violet text-sm">Bookopoly</p>
+
+              {!needsValidation && !rolling && remaining.length > 0 && (
+                <p className="text-[10px] text-gray-500 font-bold text-center px-4">
+                  {totalCompleted === 0 ? 'Lance le dé pour commencer !' : `${remaining.length} case${remaining.length > 1 ? 's' : ''} restante${remaining.length > 1 ? 's' : ''}`}
+                </p>
+              )}
+
+              {rolling && (
+                <p className="text-[10px] text-violet font-black animate-pulse">En cours…</p>
+              )}
+
+              {needsValidation && activeCase && !rolling && (
+                <div className="text-center px-2">
+                  <p className="text-xs font-black text-violet">{activeCase.emoji} {activeCase.label}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">Valide avec un livre !</p>
+                </div>
+              )}
             </div>
 
-            {/* Colonne droite */}
-            <div className="flex flex-col gap-0.5 w-14 flex-shrink-0">
-              {rightCol.map(c => <CaseSquare key={c.id} c={c} size="corner" />)}
+            {/* Colonne DROITE (haut→bas) */}
+            <div className="flex flex-col gap-0.5">
+              {RIGHT_COL.map(c => <Square key={c.id} c={c} vertical />)}
             </div>
           </div>
 
-          {/* Rangée du bas (inversée) */}
+          {/* Rangée du BAS */}
           <div className="flex gap-0.5 mt-0.5">
-            {[...bottomRow].reverse().map(c => <CaseSquare key={c.id} c={c} size={c.corner ? 'corner' : 'sm'} />)}
+            {BOTTOM_ROW.map(c => <Square key={c.id} c={c} />)}
           </div>
         </div>
       )}
 
-      {/* Panel case active */}
-      {activeCase && activeCaseData && (
+      {/* Panel validation de la case tirée */}
+      {activeCase && needsValidation && !rolling && (
         <div className="card p-4 space-y-3 border-2 border-violet">
-          <div className="flex items-start justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{activeCaseData.emoji}</span>
+              <span className="text-3xl">{activeCase.emoji}</span>
               <div>
-                <p className="font-black text-ink">{activeCaseData.label}</p>
-                {activeCaseCompleted && (
-                  <p className="text-xs text-green-600 font-bold">✓ Complétée le {new Date(activeCaseCompleted.completed_at).toLocaleDateString('fr-FR')}</p>
-                )}
+                <p className="font-black text-ink">{activeCase.label}</p>
+                <p className="text-xs text-gray-400">Lie un livre lu pour valider cette case</p>
               </div>
             </div>
-            <button onClick={() => { setActiveCase(null); setBookSearch('') }}
+            <button onClick={() => { setActiveCase(null); setNeedsValidation(false); setBookSearch('') }}
               className="w-7 h-7 rounded-xl bg-gray-100 flex items-center justify-center">
               <X size={14} className="text-gray-500" />
             </button>
           </div>
 
-          {/* Livre lié */}
-          {activeCaseCompleted?.book_id && (
-            <div className="bg-violet-light rounded-2xl p-3 flex items-center gap-2">
-              <BookOpen size={14} className="text-violet flex-shrink-0" />
-              <span className="text-xs font-bold text-violet truncate">
-                {books.find(b => b.id === activeCaseCompleted.book_id)?.title || 'Livre inconnu'}
-              </span>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => toggleCase(activeCase)}
-              className={`flex-1 py-2.5 rounded-2xl font-black text-sm transition-all ${
-                activeCaseCompleted
-                  ? 'bg-red-50 text-red-500 hover:bg-red-100'
-                  : 'bg-green-50 text-green-600 hover:bg-green-100'
-              }`}
-            >
-              {activeCaseCompleted ? '✕ Décocher' : '✓ Marquer comme lu'}
-            </button>
-          </div>
-
-          {/* Lier un livre */}
+          {/* Recherche de livre */}
           <div>
-            <p className="text-xs font-black text-gray-500 mb-2">LIER UN LIVRE</p>
+            <label className="text-xs font-black text-gray-500 mb-1.5 block">CHOISIR UN LIVRE LU</label>
             <input
               value={bookSearch}
               onChange={e => setBookSearch(e.target.value)}
-              placeholder="Chercher dans vos livres lus…"
-              className="input text-sm mb-2"
+              placeholder="Rechercher parmi tes livres lus…"
+              className="input text-sm"
             />
-            {bookSearch && (
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {filteredBooks.length === 0 ? (
-                  <p className="text-xs text-gray-400 text-center py-2">Aucun résultat</p>
-                ) : (
-                  filteredBooks.slice(0, 8).map(b => (
-                    <button
-                      key={b.id}
-                      onClick={() => linkBook(activeCase, b.id)}
-                      className="w-full text-left px-3 py-2 rounded-xl bg-gray-50 hover:bg-violet-light transition-colors"
-                    >
-                      <p className="font-bold text-sm text-ink truncate">{b.title}</p>
-                      <p className="text-xs text-gray-400 truncate">{b.author}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
+          </div>
+
+          {bookSearch && (
+            <div className="space-y-1 max-h-44 overflow-y-auto">
+              {filteredBooks.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Aucun résultat</p>
+              ) : (
+                filteredBooks.slice(0, 8).map(b => (
+                  <button
+                    key={b.id}
+                    onClick={() => validateCase(b.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-violet-light transition-colors"
+                  >
+                    <p className="font-bold text-sm text-ink truncate">{b.title}</p>
+                    <p className="text-xs text-gray-400 truncate">{b.author}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          {books.length === 0 && (
+            <p className="text-xs text-gray-400 text-center py-2">
+              Aucun livre lu pour l'instant — termine un livre d'abord !
+            </p>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={skipCase}
+              className="flex-1 py-2.5 rounded-2xl font-black text-sm bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all">
+              Passer
+            </button>
+            <button
+              onClick={() => validateCase(undefined)}
+              className="flex-[2] py-2.5 rounded-2xl font-black text-sm bg-green-50 text-green-600 hover:bg-green-100 transition-all"
+            >
+              ✓ Valider sans livre
+            </button>
           </div>
         </div>
       )}
 
-      {/* Liste des cases complétées */}
+      {/* Cases complétées */}
       {totalCompleted > 0 && (
         <div>
-          <h2 className="font-black text-base text-ink mb-2">Cases complétées</h2>
+          <h2 className="font-black text-base text-ink mb-2">Cases complétées ({totalCompleted})</h2>
           <div className="space-y-2">
             {completed.map(comp => {
               const caseData = CASES.find(c => c.id === comp.case_id)
-              const book = books.find(b => b.id === comp.book_id)
+              const book = comp.book_id ? books.find(b => b.id === comp.book_id) : null
               if (!caseData) return null
               return (
                 <div key={comp.case_id} className="card flex items-center gap-3 p-3">
@@ -352,13 +423,15 @@ function BookopolyContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-black text-sm text-ink truncate">{caseData.label}</p>
-                    {book ? (
-                      <p className="text-xs text-violet font-bold truncate">📖 {book.title}</p>
-                    ) : (
-                      <p className="text-xs text-gray-400">{new Date(comp.completed_at).toLocaleDateString('fr-FR')}</p>
-                    )}
+                    {book
+                      ? <p className="text-xs text-violet font-bold truncate">📖 {book.title}</p>
+                      : <p className="text-xs text-gray-400">{new Date(comp.completed_at).toLocaleDateString('fr-FR')}</p>
+                    }
                   </div>
-                  <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
+                  <button onClick={() => uncomplete(comp.case_id)}
+                    className="w-7 h-7 rounded-xl bg-red-50 text-red-400 flex items-center justify-center hover:bg-red-100 flex-shrink-0">
+                    <X size={12} />
+                  </button>
                 </div>
               )
             })}
@@ -372,4 +445,3 @@ function BookopolyContent() {
 export default function BookopolyPage() {
   return <ToastProvider><AppLayout><BookopolyContent /></AppLayout></ToastProvider>
 }
-
