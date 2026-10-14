@@ -140,7 +140,7 @@ function LibraryContent() {
       }
     }
     const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
-    if (error) { toast('Erreur', 'error'); return }
+    if (error) { console.error('Supabase error:', error); toast('Erreur: ' + error.message, 'error'); return }
     toast('Mis à jour !', 'success')
     setEditBook(null); loadBooks()
   }
