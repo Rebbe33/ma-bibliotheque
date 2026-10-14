@@ -3,17 +3,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase'
 import AppLayout from '@/components/layout/AppLayout'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
-import { X, CheckCircle2, BookOpen, Dices } from 'lucide-react'
+import { X } from 'lucide-react'
 
 interface Book { id: string; title: string; author: string }
 interface CompletedCase { case_id: string; book_id?: string; completed_at: string }
-
-// 11 cases par côté (incluant les coins) = 40 cases total comme Monopoly
-// Coins : indices 0 (BG), 10 (BD), 20 (HD), 30 (HG)
-// Bas (BG→BD) : 0-10
-// Droite (BD→HD) : 10-20
-// Haut (HD→HG) : 20-30
-// Gauche (HG→BG) : 30-40 (=0)
 
 const CASES = [
   // BAS — gauche vers droite (index 0 = coin bas-gauche)
@@ -60,43 +53,24 @@ const CASES = [
   { id: 'surprise',          label: '?',                     emoji: '❓'                },
   { id: 'highest-ratings',   label: 'Highest # of Ratings',  emoji: '⭐'                },
 ]
-// Total = 34 cases (pas exactement 40 — on s'adapte à tes cases réelles)
 
-// Répartition visuelle : 9 cases par côté entre les 4 coins
-const SIDE_COUNT = Math.floor((CASES.length - 4) / 4) // cases non-coin par côté
-// Coins sont aux positions 0, S+1, 2*(S+1), 3*(S+1) où S = SIDE_COUNT
-
-// On crée une disposition fixe adaptée à nos 34 cases
-// Bas : cases[0..8] (9 + coin gauche = index 0, coin droit = index 9)
-// Droite : cases[9..18]
-// Haut : cases[18..27]
-// Gauche : cases[27..33] + retour à 0
-
-// Répartition réelle avec 34 cases :
-// On fait 4 coins + 30 cases de côté = 4 * 7,5 → on ajuste à 4 côtés de 8 + 4 coins = 36
-// On garde les 34 cases telles quelles et on répartit :
-// Bas (BG→BD) : indices 0-8  (9 cases dont le coin 0 et le coin 8)
-// Droite (BD→HD) : indices 8-16 (le coin 8 est partagé)
-// Haut (HD→HG) : indices 16-24
-// Gauche (HG→BG) : indices 24-33+0
-
-// Simplification : on mappe directement sur 4 rangées
-const BOTTOM = CASES.slice(0, 9)     // index 0 (coin BG) → 8 (avant coin BD) + coin BD est à index 9
+const BOTTOM = CASES.slice(0, 9)
 const CORNER_BR = CASES[9]
-const RIGHT = CASES.slice(10, 19)    // 9 cases droite (haut)
+const RIGHT = CASES.slice(10, 19)
 const CORNER_TR = CASES[19]
-const TOP_RAW = CASES.slice(20, 29)  // 9 cases haut (de droite à gauche, on les inverse à l'affichage)
+const TOP_RAW = CASES.slice(20, 29)
 const CORNER_TL = CASES[29]
-const LEFT_RAW = CASES.slice(30, 34) // 4 cases gauche restantes
-const CORNER_BL = CASES[0]           // le coin BG est déjà dans BOTTOM[0]
+const LEFT_RAW = CASES.slice(30, 34)
+const CORNER_BL = CASES[0]
 
-// Pour l'affichage du plateau :
-// Rangée TOP = [CORNER_TL, ...TOP_RAW inversé, CORNER_TR] → mais on veut gauche→droite
-// Rangée BOTTOM = [CORNER_BL, ...BOTTOM.slice(1), CORNER_BR] → gauche→droite
 const TOP_ROW = [CORNER_TL, ...TOP_RAW.slice().reverse(), CORNER_TR]
 const BOTTOM_ROW = [CORNER_BL, ...BOTTOM.slice(1), CORNER_BR]
-const RIGHT_COL = RIGHT  // bas→haut quand on lit de haut en bas = on les inverse
-const LEFT_COL = [...LEFT_RAW].reverse() // idem
+const RIGHT_COL = RIGHT
+const LEFT_COL = [...LEFT_RAW].reverse()
+
+const LS_ACTIVE = 'bookopoly_active_case_id'
+const LS_NEEDS  = 'bookopoly_needs_validation'
+const LS_DICE   = 'bookopoly_dice_value'
 
 function BookopolyContent() {
   const supabase = createClient()
@@ -106,12 +80,37 @@ function BookopolyContent() {
   const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
 
-  // État du dé
-  const [activeCase, setActiveCase] = useState<typeof CASES[0] | null>(null)
+  // État du dé — initialisé depuis localStorage
+  const [activeCase, setActiveCase] = useState<typeof CASES[0] | null>(() => {
+    try {
+      const id = localStorage.getItem(LS_ACTIVE)
+      return id ? (CASES.find(c => c.id === id) ?? null) : null
+    } catch { return null }
+  })
   const [rolling, setRolling] = useState(false)
-  const [diceValue, setDiceValue] = useState(1)
+  const [diceValue, setDiceValue] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(LS_DICE) || '1') || 1 } catch { return 1 }
+  })
   const [bookSearch, setBookSearch] = useState('')
-  const [needsValidation, setNeedsValidation] = useState(false) // case tirée, attend validation
+  const [needsValidation, setNeedsValidation] = useState<boolean>(() => {
+    try { return localStorage.getItem(LS_NEEDS) === 'true' } catch { return false }
+  })
+
+  // Persister dans localStorage à chaque changement
+  useEffect(() => {
+    try {
+      if (activeCase) localStorage.setItem(LS_ACTIVE, activeCase.id)
+      else localStorage.removeItem(LS_ACTIVE)
+    } catch {}
+  }, [activeCase])
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_NEEDS, String(needsValidation)) } catch {}
+  }, [needsValidation])
+
+  useEffect(() => {
+    try { localStorage.setItem(LS_DICE, String(diceValue)) } catch {}
+  }, [diceValue])
 
   const loadData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -138,7 +137,6 @@ function BookopolyContent() {
   const totalCompleted = completed.length
   const progress = Math.round((totalCompleted / CASES.length) * 100)
 
-  // Dés emoji
   const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅']
 
   async function rollDice() {
@@ -148,7 +146,6 @@ function BookopolyContent() {
     setRolling(true)
     setActiveCase(null)
 
-    // Animation dé
     let count = 0
     const interval = setInterval(() => {
       setDiceValue(Math.floor(Math.random() * 6) + 1)
@@ -156,7 +153,6 @@ function BookopolyContent() {
       if (count >= 12) {
         clearInterval(interval)
         setRolling(false)
-        // Tirer une case aléatoire parmi les non-complétées
         const picked = remaining[Math.floor(Math.random() * remaining.length)]
         setActiveCase(picked)
         setNeedsValidation(true)
@@ -194,7 +190,6 @@ function BookopolyContent() {
   }
 
   function skipCase() {
-    // On skip la case (on peut relancer sans valider)
     setNeedsValidation(false)
     setActiveCase(null)
     setBookSearch('')
@@ -206,18 +201,13 @@ function BookopolyContent() {
     b.author.toLowerCase().includes(bookSearch.toLowerCase())
   )
 
-  // Composant case du plateau
   function Square({ c, vertical = false }: { c: typeof CASES[0]; vertical?: boolean }) {
     const done = completedIds.has(c.id)
     const isActive = activeCase?.id === c.id
-    const compEntry = completed.find(x => x.case_id === c.id)
-    const linkedBook = compEntry?.book_id ? books.find(b => b.id === compEntry.book_id) : null
 
     return (
       <button
-        onClick={() => {
-          if (done) uncomplete(c.id)
-        }}
+        onClick={() => { if (done) uncomplete(c.id) }}
         className={`
           relative flex flex-col items-center justify-center text-center
           border transition-all select-none
@@ -257,7 +247,6 @@ function BookopolyContent() {
         </div>
       </div>
 
-      {/* Barre de progression */}
       <div className="card p-3">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs font-black text-gray-500">Progression</span>
@@ -272,28 +261,20 @@ function BookopolyContent() {
         )}
       </div>
 
-      {/* Plateau de jeu */}
       {loading ? (
         <div className="card h-72 animate-pulse bg-gray-50 flex items-center justify-center">
           <p className="text-gray-400 text-sm">Chargement…</p>
         </div>
       ) : (
         <div className="card p-1.5 bg-white">
-          {/* Rangée du HAUT */}
           <div className="flex gap-0.5 mb-0.5">
             {TOP_ROW.map(c => <Square key={c.id} c={c} />)}
           </div>
-
-          {/* Zone centrale avec colonnes gauche et droite */}
           <div className="flex gap-0.5">
-            {/* Colonne GAUCHE (haut→bas dans l'affichage) */}
             <div className="flex flex-col gap-0.5">
               {LEFT_COL.map(c => <Square key={c.id} c={c} vertical />)}
             </div>
-
-            {/* Centre */}
             <div className="flex-1 rounded-xl bg-gradient-to-br from-violet-light via-pink-light to-violet-light flex flex-col items-center justify-center gap-2 py-4 min-h-[160px]">
-              {/* Dé animé */}
               <button
                 onClick={rollDice}
                 disabled={rolling || (needsValidation && !!activeCase)}
@@ -313,11 +294,9 @@ function BookopolyContent() {
                   {totalCompleted === 0 ? 'Lance le dé pour commencer !' : `${remaining.length} case${remaining.length > 1 ? 's' : ''} restante${remaining.length > 1 ? 's' : ''}`}
                 </p>
               )}
-
               {rolling && (
                 <p className="text-[10px] text-violet font-black animate-pulse">En cours…</p>
               )}
-
               {needsValidation && activeCase && !rolling && (
                 <div className="text-center px-2">
                   <p className="text-xs font-black text-violet">{activeCase.emoji} {activeCase.label}</p>
@@ -325,21 +304,17 @@ function BookopolyContent() {
                 </div>
               )}
             </div>
-
-            {/* Colonne DROITE (haut→bas) */}
             <div className="flex flex-col gap-0.5">
               {RIGHT_COL.map(c => <Square key={c.id} c={c} vertical />)}
             </div>
           </div>
-
-          {/* Rangée du BAS */}
           <div className="flex gap-0.5 mt-0.5">
             {BOTTOM_ROW.map(c => <Square key={c.id} c={c} />)}
           </div>
         </div>
       )}
 
-      {/* Panel validation de la case tirée */}
+      {/* Panel validation */}
       {activeCase && needsValidation && !rolling && (
         <div className="card p-4 space-y-3 border-2 border-violet">
           <div className="flex items-center justify-between">
@@ -356,7 +331,6 @@ function BookopolyContent() {
             </button>
           </div>
 
-          {/* Recherche de livre */}
           <div>
             <label className="text-xs font-black text-gray-500 mb-1.5 block">CHOISIR UN LIVRE LU</label>
             <input
@@ -373,11 +347,8 @@ function BookopolyContent() {
                 <p className="text-xs text-gray-400 text-center py-3">Aucun résultat</p>
               ) : (
                 filteredBooks.slice(0, 8).map(b => (
-                  <button
-                    key={b.id}
-                    onClick={() => validateCase(b.id)}
-                    className="w-full text-left px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-violet-light transition-colors"
-                  >
+                  <button key={b.id} onClick={() => validateCase(b.id)}
+                    className="w-full text-left px-3 py-2.5 rounded-xl bg-gray-50 hover:bg-violet-light transition-colors">
                     <p className="font-bold text-sm text-ink truncate">{b.title}</p>
                     <p className="text-xs text-gray-400 truncate">{b.author}</p>
                   </button>
@@ -397,17 +368,14 @@ function BookopolyContent() {
               className="flex-1 py-2.5 rounded-2xl font-black text-sm bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all">
               Passer
             </button>
-            <button
-              onClick={() => validateCase(undefined)}
-              className="flex-[2] py-2.5 rounded-2xl font-black text-sm bg-green-50 text-green-600 hover:bg-green-100 transition-all"
-            >
+            <button onClick={() => validateCase(undefined)}
+              className="flex-[2] py-2.5 rounded-2xl font-black text-sm bg-green-50 text-green-600 hover:bg-green-100 transition-all">
               ✓ Valider sans livre
             </button>
           </div>
         </div>
       )}
 
-      {/* Cases complétées */}
       {totalCompleted > 0 && (
         <div>
           <h2 className="font-black text-base text-ink mb-2">Cases complétées ({totalCompleted})</h2>
