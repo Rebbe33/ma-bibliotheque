@@ -13,7 +13,7 @@ import { getBestCover, extractYear } from '@/lib/google-books'
 
 const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
 const STATUS_EMOJI: Record<BookStatus, string> = {
-  'À lire':'📋', 'En cours':'📖', 'Lu':'✅', 'Abandonné':'💀', 'À acquérir':'🛒'
+  'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀', 'Prêté': '🤝'
 }
 const STATUS_ORDER: BookStatus[] = ['À acquérir', 'À lire', 'En cours', 'Lu']
 const STATUS_BG: Record<BookStatus, string> = {
