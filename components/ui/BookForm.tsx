@@ -14,16 +14,16 @@ interface Props {
   onAddToWishlist?: (book: GoogleBook) => void
 }
 
-const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'Prêté']
 const STATUS_EMOJI: Record<BookStatus, string> = {
-  'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀', 'À acquérir': '🛒'
+  'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀', 'Prêté': '🤝'
 }
 const STATUS_COLORS: Record<BookStatus, string> = {
   'À lire': 'bg-blue-50 text-blue-700 ring-blue-200',
   'En cours': 'bg-amber-light text-amber-dark ring-amber-200',
   'Lu': 'bg-mint-light text-mint-dark ring-green-200',
   'Abandonné': 'bg-red-50 text-red-700 ring-red-200',
-  'À acquérir': 'bg-coral-light text-coral-dark ring-coral-200',
+  'Prêté': 'bg-violet-light text-violet ring-violet/30',
 }
 
 export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishlist }: Props) {
@@ -49,6 +49,7 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
     rating: initial.rating || 0,
     notes: initial.notes || '',
     google_books_id: initial.google_books_id || '',
+    borrower_name: (initial as any).borrower_name || '',
   })
 
   useEffect(() => {
@@ -87,48 +88,33 @@ export default function BookForm({ initial = {}, onSave, onCancel, onAddToWishli
       rating: 0,
       notes: '',
       google_books_id: book.id,
+      borrower_name: '',
     })
     setStep('form')
   }
 
-async function handleSave() {
-  if (!form.title.trim() || !form.author.trim()) return
-  setSaving(true)
-
-  const bookData = {
-    title: form.title.trim(),
-    author: form.author.trim(),
-    genre: form.genre.trim() || undefined,
-    year: form.year ? parseInt(form.year) : undefined,
-    pages: form.pages ? parseInt(form.pages) : undefined,
-    publisher: form.publisher.trim() || undefined,
-    isbn: form.isbn.trim() || undefined,
-    series_name: form.series_name.trim() || undefined,
-    series_number: form.series_number ? parseFloat(form.series_number) : undefined,
-    cover_url: form.cover_url.trim() || undefined,
-    status: form.status,
-    rating: form.rating,
-    notes: form.notes.trim() || undefined,
-    google_books_id: form.google_books_id || undefined,
-  }
-
-  // Sauvegarder dans la bibliothèque dans tous les cas
-  await onSave(bookData)
-
-  // Si "À acquérir" → aussi ajouter à la wishlist
-  if (form.status === 'À acquérir' && onAddToWishlist) {
-    const fakeGoogleBook = {
-      id: form.google_books_id || '',
+  async function handleSave() {
+    if (!form.title.trim() || !form.author.trim()) return
+    setSaving(true)
+    await onSave({
       title: form.title.trim(),
-      authors: [form.author.trim()],
-      publishedDate: form.year || '',
-      imageLinks: form.cover_url ? { thumbnail: form.cover_url } : undefined,
-    } as any
-    await onAddToWishlist(fakeGoogleBook)
+      author: form.author.trim(),
+      genre: form.genre.trim() || undefined,
+      year: form.year ? parseInt(form.year) : undefined,
+      pages: form.pages ? parseInt(form.pages) : undefined,
+      publisher: form.publisher.trim() || undefined,
+      isbn: form.isbn.trim() || undefined,
+      series_name: form.series_name.trim() || undefined,
+      series_number: form.series_number ? parseFloat(form.series_number) : undefined,
+      cover_url: form.cover_url.trim() || undefined,
+      status: form.status,
+      rating: form.rating,
+      notes: form.notes.trim() || undefined,
+      google_books_id: form.google_books_id || undefined,
+      borrower_name: form.status === 'Prêté' ? (form.borrower_name.trim() || undefined) : undefined,
+    } as any)
+    setSaving(false)
   }
-
-  setSaving(false)
-}
 
   if (step === 'search') return (
     <div>
@@ -180,6 +166,19 @@ async function handleSave() {
         </div>
       </div>
 
+      {/* Champ emprunteur si statut Prêté */}
+      {form.status === 'Prêté' && (
+        <div className="bg-violet-light rounded-2xl p-3">
+          <label className="block text-xs font-black text-violet mb-1.5">🤝 PRÊTÉ À</label>
+          <input
+            value={form.borrower_name}
+            onChange={e => set('borrower_name', e.target.value)}
+            className="input text-sm"
+            placeholder="Prénom de la personne…"
+          />
+        </div>
+      )}
+
       {/* Rating */}
       <div>
         <label className="block text-xs font-black text-gray-500 mb-2">NOTE</label>
@@ -212,49 +211,43 @@ async function handleSave() {
       </div>
 
       {/* Série */}
-<div>
-  <label className="block text-xs font-black text-gray-500 mb-2">SÉRIE</label>
-  {existingSeries.length > 0 && (
-    <div className="flex p-1 bg-gray-100 rounded-2xl mb-2">
-      <button onClick={() => setSeriesMode('existing')}
-        className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
-          seriesMode === 'existing' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-        }`}>
-        Série existante
-      </button>
-      <button onClick={() => { setSeriesMode('new'); set('series_name', '') }}
-        className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
-          seriesMode === 'new' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-        }`}>
-        Nouvelle série
-      </button>
-    </div>
-  )}
-  <div className="grid grid-cols-[1fr_80px] gap-2">
-    {seriesMode === 'existing' && existingSeries.length > 0 ? (
-      <div className="relative">
-        <select value={form.series_name} onChange={e => set('series_name', e.target.value)}
-          className="input text-sm appearance-none pr-8 w-full">
-          <option value="">— Aucune —</option>
-          {existingSeries.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+      <div>
+        <label className="block text-xs font-black text-gray-500 mb-2">SÉRIE</label>
+        {existingSeries.length > 0 && (
+          <div className="flex p-1 bg-gray-100 rounded-2xl mb-2">
+            <button onClick={() => setSeriesMode('existing')}
+              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+                seriesMode === 'existing' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+              }`}>
+              Série existante
+            </button>
+            <button onClick={() => { setSeriesMode('new'); set('series_name', '') }}
+              className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
+                seriesMode === 'new' ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
+              }`}>
+              Nouvelle série
+            </button>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {seriesMode === 'existing' && existingSeries.length > 0 ? (
+            <div className="relative flex-1">
+              <select value={form.series_name} onChange={e => set('series_name', e.target.value)}
+                className="input text-sm appearance-none pr-8 w-full">
+                <option value="">— Aucune série —</option>
+                {existingSeries.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+            </div>
+          ) : (
+            <input value={form.series_name} onChange={e => set('series_name', e.target.value)}
+              className="input text-sm flex-1" placeholder="Nom de la série" />
+          )}
+          <input type="number" value={form.series_number} onChange={e => set('series_number', e.target.value)}
+            className="input text-sm w-24 text-center flex-shrink-0" placeholder="N°" />
+        </div>
       </div>
-    ) : (
-      <input value={form.series_name} onChange={e => set('series_name', e.target.value)}
-        className="input text-sm" placeholder="Nom de la série" />
-    )}
-    <input
-      type="number"
-      value={form.series_number}
-      onChange={e => set('series_number', e.target.value)}
-      className="input text-sm text-center"
-      placeholder="N°"
-      min="0"
-      max="99"
-    />
-  </div>
-</div>
 
       {/* Notes */}
       <div>
