@@ -62,10 +62,11 @@ function ReadingContent() {
         .lte('date', endOfMonth)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false }),
+      // Uniquement les livres En cours
       supabase.from('bibliotheque_books')
         .select('id, title, status')
         .eq('user_id', user.id)
-        .in('status', ['En cours', 'Lu'])
+        .eq('status', 'En cours')
         .order('title'),
     ])
 
@@ -181,7 +182,9 @@ function ReadingContent() {
           </div>
 
           <div>
-            <label className="block text-xs font-black text-gray-500 mb-1">LIVRE (optionnel)</label>
+            <label className="block text-xs font-black text-gray-500 mb-1">
+              LIVRE EN COURS {books.length === 0 && <span className="text-gray-400 font-normal">(aucun livre en cours)</span>}
+            </label>
             <select value={form.book_id} onChange={e => setForm(f => ({...f, book_id: e.target.value}))}
               className="input text-sm">
               <option value="">— Aucun livre sélectionné —</option>
