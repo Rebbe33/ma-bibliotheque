@@ -12,10 +12,13 @@ import { extractYear, getBestCover, getISBN } from '@/lib/google-books'
 interface Series { name: string; books: Book[] }
 interface GoogleBookWithMeta extends GoogleBook { checked: boolean; tomeNumber: string }
 
-const STATUS_CHIP: Record<string, string> = {
-  'Lu': 'chip chip-lu', 'En cours': 'chip chip-en',
-  'À lire': 'chip chip-al', 'Abandonné': 'chip chip-ab',
-  'À acquérir': 'chip chip-aq'
+const STATUS_CHIP: Record<BookStatus, string> = {
+  'Lu':         'chip chip-lu',
+  'En cours':   'chip chip-en',
+  'À lire':     'chip chip-al',
+  'Abandonné':  'chip chip-ab',
+  'Prêté':      'chip chip-pr',
+  'À acquérir': 'chip chip-aq',
 }
 
 // ── Sous-composant édition série ──
@@ -26,18 +29,22 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
   onRemoveBook: (id: string) => void
 }) {
   const [name, setName] = useState(series.name)
-  // State local pour les valeurs en cours d'édition
   const [localBooks, setLocalBooks] = useState(series.books)
-  const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+
+  const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'Prêté', 'À acquérir']
   const STATUS_EMOJI: Record<BookStatus, string> = {
-    'À lire':'📋','En cours':'📖','Lu':'✅','Abandonné':'💀','À acquérir':'🛒'
+    'À lire':     '📋',
+    'En cours':   '📖',
+    'Lu':         '✅',
+    'Abandonné':  '💀',
+    'Prêté':      '🤝',
+    'À acquérir': '🛒',
   }
+
   function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%8 }
 
   function handleUpdate(bookId: string, data: Partial<Book>) {
-    // Mettre à jour localement immédiatement pour l'affichage
     setLocalBooks(books => books.map(b => b.id === bookId ? { ...b, ...data } : b))
-    // Puis sauvegarder en base
     onUpdateBook(bookId, data)
   }
 
@@ -343,29 +350,29 @@ function SeriesContent() {
   const seriesWithMissingCount = series.filter(s => hasMissing(s.books)).length
 
   async function addMissingToWishlist(book: Book) {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
-  const { data: existing } = await supabase
-    .from('bibliotheque_wishlist')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('title', book.title)
-    .maybeSingle()
-  if (existing) {
-    toast('Déjà dans tes souhaits !', 'info')
-    return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: existing } = await supabase
+      .from('bibliotheque_wishlist')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('title', book.title)
+      .maybeSingle()
+    if (existing) {
+      toast('Déjà dans tes souhaits !', 'info')
+      return
+    }
+    await supabase.from('bibliotheque_wishlist').insert({
+      user_id: user.id,
+      title: book.title,
+      author: book.author,
+      cover_url: book.cover_url,
+      year: book.year,
+      priority: 'Haute',
+      notes: `Tome manquant de la série "${book.series_name}"`,
+    })
+    toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
   }
-  await supabase.from('bibliotheque_wishlist').insert({
-    user_id: user.id,
-    title: book.title,
-    author: book.author,
-    cover_url: book.cover_url,
-    year: book.year,
-    priority: 'Haute',
-    notes: `Tome manquant de la série "${book.series_name}"`,
-  })
-  toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
-}
 
   async function doSearch(q = searchQuery, p = 0, src = source) {
     if (!q.trim()) return
@@ -457,41 +464,39 @@ function SeriesContent() {
   }
 
   async function updateBookInSeries(bookId: string, data: Partial<Book>) {
-  // Si "À acquérir" → ajouter à la wishlist sans retirer de la série
-  if (data.status === 'À acquérir') {
-    const book = series.flatMap(s => s.books).find(b => b.id === bookId)
-    if (book) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: existing } = await supabase
-          .from('bibliotheque_wishlist')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('title', book.title)
-          .maybeSingle()
-        if (existing) {
-          toast('Déjà dans tes souhaits !', 'info')
-        } else {
-          await supabase.from('bibliotheque_wishlist').insert({
-            user_id: user.id,
-            title: book.title,
-            author: book.author,
-            cover_url: book.cover_url,
-            year: book.year,
-            priority: 'Haute',
-          })
-          toast(`"${book.title}" ajouté aux souhaits ! 🛒`, 'success')
+    if (data.status === 'À acquérir') {
+      const book = series.flatMap(s => s.books).find(b => b.id === bookId)
+      if (book) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: existing } = await supabase
+            .from('bibliotheque_wishlist')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('title', book.title)
+            .maybeSingle()
+          if (existing) {
+            toast('Déjà dans tes souhaits !', 'info')
+          } else {
+            await supabase.from('bibliotheque_wishlist').insert({
+              user_id: user.id,
+              title: book.title,
+              author: book.author,
+              cover_url: book.cover_url,
+              year: book.year,
+              priority: 'Haute',
+            })
+            toast(`"${book.title}" ajouté aux souhaits ! 🛒`, 'success')
+          }
         }
       }
     }
+    await supabase.from('bibliotheque_books').update(data).eq('id', bookId)
+    setSeries(s => s.map(serie => ({
+      ...serie,
+      books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
+    })))
   }
-  // Toujours mettre à jour le statut en base (sans supprimer)
-  await supabase.from('bibliotheque_books').update(data).eq('id', bookId)
-  setSeries(s => s.map(serie => ({
-    ...serie,
-    books: serie.books.map(b => b.id === bookId ? { ...b, ...data } : b)
-  })))
-}
 
   async function removeFromSeries(bookId: string) {
     if (!confirm('Retirer ce tome de la série ?')) return
@@ -651,23 +656,33 @@ function SeriesContent() {
         </div>
       )}
 
-      {/* ── Filtrer mes séries ── */}
-      <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
-        <input value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Filtrer mes séries…"
-          style={{ paddingLeft: '2.25rem' }}
-          className="input pr-9 py-2.5 text-sm" />
-        {query && (
-          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-            <X size={15} className="text-gray-400" />
+      {/* ── Filtrer ── */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
+          <input value={query} onChange={e => setQuery(e.target.value)}
+            placeholder="Filtrer mes séries…"
+            style={{ paddingLeft: '2.25rem' }}
+            className="input pr-9 py-2.5 text-sm" />
+          {query && (
+            <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X size={15} className="text-gray-400" />
+            </button>
+          )}
+        </div>
+        {seriesWithMissingCount > 0 && (
+          <button onClick={() => setMissingFilter(f => !f)}
+            className={`flex-shrink-0 px-3 py-2 rounded-2xl font-black text-xs transition-all ${
+              missingFilter ? 'bg-coral-light text-coral-dark shadow-sm' : 'bg-white text-gray-400 shadow-sm'
+            }`}>
+            📋 {seriesWithMissingCount} à compléter
           </button>
         )}
       </div>
 
       <p className="text-xs font-bold text-gray-400">{filtered.length} série{filtered.length !== 1 ? 's' : ''}</p>
 
-      {/* ── Liste de mes séries ── */}
+      {/* ── Liste ── */}
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map(i => <div key={i} className="card h-24 animate-pulse bg-gray-50" />)}
