@@ -11,17 +11,26 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { Search, X, Plus, SlidersHorizontal } from 'lucide-react'
 import { getBestCover, extractYear } from '@/lib/google-books'
 
-const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'À acquérir']
+const STATUSES: BookStatus[] = ['À lire', 'En cours', 'Lu', 'Abandonné', 'Prêté', 'À acquérir']
+
 const STATUS_EMOJI: Record<BookStatus, string> = {
-  'À lire': '📋', 'En cours': '📖', 'Lu': '✅', 'Abandonné': '💀', 'Prêté': '🤝'
+  'À lire':     '📋',
+  'En cours':   '📖',
+  'Lu':         '✅',
+  'Abandonné':  '💀',
+  'Prêté':      '🤝',
+  'À acquérir': '🛒',
 }
+
 const STATUS_ORDER: BookStatus[] = ['À acquérir', 'À lire', 'En cours', 'Lu']
+
 const STATUS_BG: Record<BookStatus, string> = {
-  'Lu': 'bg-mint-light text-mint-dark',
-  'En cours': 'bg-amber-light text-amber-dark',
-  'À lire': 'bg-cyan-light text-cyan-dark',
-  'Abandonné': 'bg-red-50 text-red-600',
-  'À acquérir': 'bg-coral-light text-coral-dark',
+  'Lu':         'bg-mint-light text-mint-dark',
+  'En cours':   'bg-amber-light text-amber-dark',
+  'À lire':     'bg-cyan-light text-cyan-dark',
+  'Abandonné':  'bg-red-50 text-red-600',
+  'Prêté':      'bg-violet-light text-violet',
+  'À acquérir': 'bg-orange-50 text-orange-700',
 }
 
 function LibraryContent() {
@@ -57,22 +66,20 @@ function LibraryContent() {
 
   useEffect(() => { loadBooks() }, [loadBooks])
 
-  // Recherche floue — contient le mot, pas besoin du titre exact
+  // Recherche floue
   const filtered = books.filter(b => {
-  if (!query) return true
-  const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
-  // Découper la recherche en mots séparés
-  const words = query.toLowerCase().trim().split(/\s+/)
-  const haystack = normalize([b.title, b.author, b.genre || '', b.series_name || ''].join(' '))
-  const haystackRaw = [b.title, b.author, b.genre || '', b.series_name || ''].join(' ').toLowerCase()
-  // Tous les mots doivent être trouvés (AND)
-  return words.every(word => {
-    const nw = normalize(word)
-    return haystack.includes(nw) || haystackRaw.includes(word)
+    if (!query) return true
+    const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
+    const words = query.toLowerCase().trim().split(/\s+/)
+    const haystack = normalize([b.title, b.author, b.genre || '', b.series_name || ''].join(' '))
+    const haystackRaw = [b.title, b.author, b.genre || '', b.series_name || ''].join(' ').toLowerCase()
+    return words.every(word => {
+      const nw = normalize(word)
+      return haystack.includes(nw) || haystackRaw.includes(word)
+    })
   })
-})
 
-  const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus,number>)
+  const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus, number>)
 
   async function addBook(data: Partial<Book>) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -99,47 +106,44 @@ function LibraryContent() {
     setShowAdd(false)
   }
 
-async function updateBook(id: string, data: Partial<Book>) {
-  if (data.status === 'À acquérir') {
-    const book = allBooks.find(b => b.id === id)
-    if (book) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        // Vérifier si déjà dans la wishlist
-        const { data: existing } = await supabase
-          .from('bibliotheque_wishlist')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('title', book.title)
-          .maybeSingle()
-
-        if (existing) {
-          toast('Déjà dans tes souhaits !', 'info')
-        } else {
-          await supabase.from('bibliotheque_wishlist').insert({
-            user_id: user.id,
-            title: book.title,
-            author: book.author,
-            cover_url: book.cover_url,
-            google_books_id: book.google_books_id,
-            year: book.year,
-            priority: 'Haute',
-            notes: book.notes,
-          })
-          toast('Ajouté à tes souhaits ! 🛒', 'success')
+  async function updateBook(id: string, data: Partial<Book>) {
+    if (data.status === 'À acquérir') {
+      const book = allBooks.find(b => b.id === id)
+      if (book) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: existing } = await supabase
+            .from('bibliotheque_wishlist')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('title', book.title)
+            .maybeSingle()
+          if (existing) {
+            toast('Déjà dans tes souhaits !', 'info')
+          } else {
+            await supabase.from('bibliotheque_wishlist').insert({
+              user_id: user.id,
+              title: book.title,
+              author: book.author,
+              cover_url: book.cover_url,
+              google_books_id: book.google_books_id,
+              year: book.year,
+              priority: 'Haute',
+              notes: book.notes,
+            })
+            toast('Ajouté à tes souhaits ! 🛒', 'success')
+          }
+          await supabase.from('bibliotheque_books').update({ status: 'À acquérir' }).eq('id', id)
+          setEditBook(null); loadBooks()
+          return
         }
-        // Mettre à jour le statut sans supprimer le livre
-        await supabase.from('bibliotheque_books').update({ status: 'À acquérir' }).eq('id', id)
-        setEditBook(null); loadBooks()
-        return
       }
     }
+    const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
+    if (error) { toast('Erreur', 'error'); return }
+    toast('Mis à jour !', 'success')
+    setEditBook(null); loadBooks()
   }
-  const { error } = await supabase.from('bibliotheque_books').update(data).eq('id', id)
-  if (error) { toast('Erreur', 'error'); return }
-  toast('Mis à jour !', 'success')
-  setEditBook(null); loadBooks()
-}
 
   async function deleteBook(id: string) {
     if (!confirm('Supprimer ce livre ?')) return
@@ -147,27 +151,23 @@ async function updateBook(id: string, data: Partial<Book>) {
     toast('Supprimé', 'info'); loadBooks()
   }
 
- async function markNextStatus(book: Book) {
-  const currentIdx = STATUS_ORDER.indexOf(book.status)
-  // Si déjà "Lu" ou "Abandonné", ne rien faire
-  if (currentIdx === -1 || currentIdx === STATUS_ORDER.length - 1) return
-  const nextStatus = STATUS_ORDER[currentIdx + 1]
-
-  // Si on passe à "À acquérir" → même logique wishlist
-  if (nextStatus === 'À acquérir') {
-    await updateBook(book.id, { status: 'À acquérir' })
-    return
+  async function markNextStatus(book: Book) {
+    const currentIdx = STATUS_ORDER.indexOf(book.status)
+    if (currentIdx === -1 || currentIdx === STATUS_ORDER.length - 1) return
+    const nextStatus = STATUS_ORDER[currentIdx + 1]
+    if (nextStatus === 'À acquérir') {
+      await updateBook(book.id, { status: 'À acquérir' })
+      return
+    }
+    await supabase.from('bibliotheque_books').update({ status: nextStatus }).eq('id', book.id)
+    toast(`Statut → ${nextStatus} !`, 'success')
+    loadBooks()
   }
-
-  await supabase.from('bibliotheque_books').update({ status: nextStatus }).eq('id', book.id)
-  toast(`Statut → ${nextStatus} !`, 'success')
-  loadBooks()
-}
 
   return (
     <div className="space-y-4">
 
-      {/* Status pills — padding vertical pour que les chips ne soient pas rognées */}
+      {/* Status pills */}
       <div className="-mt-2 flex gap-2 overflow-x-auto py-1 -mx-4 px-4 scrollbar-hide">
         <button onClick={() => setStatusFilter('')}
           className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
@@ -185,7 +185,7 @@ async function updateBook(id: string, data: Partial<Book>) {
         ))}
       </div>
 
-      {/* Search row — style inline pour éviter que l'icône chevauche le texte */}
+      {/* Search row */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10" />
@@ -282,7 +282,14 @@ async function updateBook(id: string, data: Partial<Book>) {
 
 function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
   function coverIdx(t: string) { let h=0; for(const c of t)h=(h*31+c.charCodeAt(0))&0xfffffff; return h%8 }
-  const STATUS_CHIP: Record<BookStatus, string> = { 'Lu':'chip chip-lu','En cours':'chip chip-en','À lire':'chip chip-al','Abandonné':'chip chip-ab','À acquérir':'chip chip-aq' }
+  const STATUS_CHIP: Record<BookStatus, string> = {
+    'Lu':         'chip chip-lu',
+    'En cours':   'chip chip-en',
+    'À lire':     'chip chip-al',
+    'Abandonné':  'chip chip-ab',
+    'Prêté':      'chip chip-pr',
+    'À acquérir': 'chip chip-aq',
+  }
 
   return (
     <div className="space-y-5 pb-4">
@@ -300,7 +307,12 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
             </span>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
-            <span className={(STATUS_CHIP as any)[book.status]}>{book.status}</span>
+            <span className={STATUS_CHIP[book.status]}>{book.status}</span>
+            {book.status === 'Prêté' && book.borrower_name && (
+              <span className="text-xs font-bold text-violet bg-violet-light px-2 py-0.5 rounded-full">
+                🤝 {book.borrower_name}
+              </span>
+            )}
             {book.rating > 0 && <span className="text-sm">{'⭐'.repeat(book.rating)}</span>}
           </div>
         </div>
