@@ -9,6 +9,7 @@ const STATUS_COLOR: Record<BookStatus, string> = {
   'En cours':   '#f59e0b',
   'À lire':     '#06b6d4',
   'Abandonné':  '#f97316',
+  'Prêté':      '#8b5cf6',
   'À acquérir': '#a855f7',
 }
 
@@ -17,6 +18,7 @@ const STATUS_CARD: Record<BookStatus, { bg: string; emoji: string }> = {
   'En cours':   { bg: '#f59e0b', emoji: '📖' },
   'À lire':     { bg: '#06b6d4', emoji: '📋' },
   'Abandonné':  { bg: '#f97316', emoji: '💀' },
+  'Prêté':      { bg: '#8b5cf6', emoji: '🤝' },
   'À acquérir': { bg: '#a855f7', emoji: '🛒' },
 }
 
@@ -42,6 +44,7 @@ export default function StatsPage() {
   const ec  = byStatus('En cours')
   const al  = byStatus('À lire')
   const ab  = byStatus('Abandonné')
+  const pr  = byStatus('Prêté')
   const aq  = byStatus('À acquérir')
 
   const pages = books.filter(b => b.status === 'Lu' && b.pages).reduce((s, b) => s + (b.pages || 0), 0)
@@ -57,7 +60,7 @@ export default function StatsPage() {
   const maxR = Math.max(...ratings.map(x => x.n), 1)
 
   const GENRE_COLORS = ['bg-violet', 'bg-pink', 'bg-cyan', 'bg-lime', 'bg-amber', 'bg-coral']
-  const STATUSES_BAR: BookStatus[] = ['Lu', 'En cours', 'À lire', 'Abandonné', 'À acquérir']
+  const STATUSES_BAR: BookStatus[] = ['Lu', 'En cours', 'À lire', 'Abandonné', 'Prêté', 'À acquérir']
 
   return (
     <AppLayout>
@@ -73,7 +76,7 @@ export default function StatsPage() {
 
         {/* Cartes par statut — couleurs inline pour fiabilité */}
         <div className="grid grid-cols-2 gap-3">
-          {(['Lu', 'En cours', 'À lire', 'Abandonné', 'À acquérir'] as BookStatus[]).map(s => {
+          {(['Lu', 'En cours', 'À lire', 'Abandonné', 'Prêté', 'À acquérir'] as BookStatus[]).map(s => {
             const n = byStatus(s)
             const { bg, emoji } = STATUS_CARD[s]
             return (
