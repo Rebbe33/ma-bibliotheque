@@ -42,6 +42,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
     title:         initial?.title         || '',
     author:        initial?.author        || '',
     nationality:   (initial as any)?.nationality || '',
+    date_finished: (initial as any)?.date_finished || '',
     genre:         initial?.genre         || '',
     year:          initial?.year          ? String(initial.year) : '',
     pages:         initial?.pages         ? String(initial.pages) : '',
@@ -128,6 +129,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
       google_books_id: form.google_books_id || undefined,
       borrower_name:   form.status === 'Prêté' ? (form.borrower_name || undefined) : undefined,
       ...(form.nationality ? { nationality: form.nationality } : {}),
+      ...(form.status === 'Lu' && form.date_finished ? { date_finished: form.date_finished } : { date_finished: null }),
     }
     onSave(data)
   }
@@ -280,7 +282,13 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
             <label className="block text-xs font-black text-gray-500 mb-1.5">STATUT</label>
             <div className="flex flex-wrap gap-1.5">
               {STATUSES.map(s => (
-                <button key={s} onClick={() => setForm(f => ({...f, status: s}))}
+                <button key={s} onClick={() => setForm(f => ({
+                  ...f,
+                  status: s,
+                  date_finished: s === 'Lu' && !f.date_finished
+                    ? new Date().toISOString().split('T')[0]
+                    : f.date_finished,
+                }))}
                   className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all ring-2 ${
                     form.status === s
                       ? `${STATUS_COLORS[s]} ring-current`
@@ -300,6 +308,16 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
                 onChange={e => setForm(f => ({...f, borrower_name: e.target.value}))}
                 placeholder="Nom de la personne…"
                 className="input" />
+            </div>
+          )}
+
+          {/* Date de fin — visible uniquement si statut = Lu */}
+          {form.status === 'Lu' && (
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-1">DATE DE LECTURE TERMINÉE</label>
+              <input type="date" value={form.date_finished}
+                onChange={e => setForm(f => ({...f, date_finished: e.target.value}))}
+                className="input text-sm" />
             </div>
           )}
 
