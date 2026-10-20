@@ -19,6 +19,13 @@ const STATUS_EMOJI: Record<BookStatus, string> = {
   'À acquérir': '🛒',
 }
 
+const PHYSICAL_BADGE: Record<string, { label: string; emoji: string; cls: string }> = {
+  'Possédé':         { label: 'Possédé',        emoji: '🏠', cls: 'bg-emerald-50 text-emerald-700' },
+  'À vendre/donner': { label: 'À vendre',        emoji: '📤', cls: 'bg-orange-50 text-orange-600' },
+  'Emprunté biblio': { label: 'Biblio',          emoji: '🔄', cls: 'bg-blue-50 text-blue-600' },
+  'À acheter':       { label: 'À acheter',       emoji: '🛍️', cls: 'bg-pink-50 text-pink-600' },
+}
+
 const COVERS = 8
 function coverIdx(title: string) {
   let h = 0; for (const c of title) h = (h * 31 + c.charCodeAt(0)) & 0xfffffff
@@ -34,6 +41,17 @@ interface Props {
 }
 
 export default function BookCard({ book, onClick, onEdit, onDelete, onMarkRead }: Props) {
+  const physicalStatus = (book as any).physical_status as string | undefined
+  const returnDate = (book as any).return_date as string | undefined
+  const physical = physicalStatus ? PHYSICAL_BADGE[physicalStatus] : null
+
+  const isReturnSoon = returnDate && physicalStatus === 'Emprunté biblio'
+    ? (() => {
+        const diff = (new Date(returnDate + 'T12:00:00').getTime() - Date.now()) / 86400000
+        return diff <= 3
+      })()
+    : false
+
   return (
     <div onClick={onClick}
       className="card card-hover flex gap-3 p-3.5 cursor-pointer active:scale-[0.98] transition-transform">
@@ -61,6 +79,18 @@ export default function BookCard({ book, onClick, onEdit, onDelete, onMarkRead }
           {book.series_name && (
             <span className="text-[11px] font-semibold text-violet bg-violet-light px-2 py-0.5 rounded-full">
               {book.series_name}{book.series_number ? ` #${book.series_number}` : ''}
+            </span>
+          )}
+          {/* Badge physique */}
+          {physical && (
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${physical.cls}`}>
+              {physical.emoji} {physical.label}
+            </span>
+          )}
+          {/* Date de retour biblio */}
+          {returnDate && physicalStatus === 'Emprunté biblio' && (
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isReturnSoon ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'}`}>
+              {isReturnSoon ? '⚠️' : '📅'} {new Date(returnDate + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
             </span>
           )}
         </div>
