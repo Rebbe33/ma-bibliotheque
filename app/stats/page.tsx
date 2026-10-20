@@ -79,9 +79,9 @@ export default function StatsPage() {
   const maxR = Math.max(...ratings.map(x => x.n), 1)
 
   // ── Stats par année ─────────────────────────────────────────────
-  const availableYears = [...new Set(
+  const availableYears = Array.from(new Set(
     sessions.map(s => new Date(s.date).getFullYear())
-  )].sort((a, b) => b - a)
+  )).sort((a, b) => b - a)
   if (!availableYears.includes(selectedYear) && availableYears.length > 0) {
     // keep selectedYear as is if no sessions, it's fine
   }
