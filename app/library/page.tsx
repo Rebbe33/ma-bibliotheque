@@ -33,6 +33,20 @@ const STATUS_BG: Record<BookStatus, string> = {
   'À acquérir': 'bg-orange-50 text-orange-700',
 }
 
+const PHYSICAL_STATUSES = [
+  { value: 'Possédé',         emoji: '🏠', label: 'Possédé' },
+  { value: 'Emprunté biblio', emoji: '🔄', label: 'Emprunté biblio' },
+  { value: 'À acheter',       emoji: '🛍️', label: 'À acheter' },
+  { value: 'À vendre/donner', emoji: '📤', label: 'À vendre/donner' },
+]
+
+const PHYSICAL_BG: Record<string, string> = {
+  'Possédé':         'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  'Emprunté biblio': 'bg-blue-50 text-blue-600 ring-blue-200',
+  'À acheter':       'bg-pink-50 text-pink-600 ring-pink-200',
+  'À vendre/donner': 'bg-orange-50 text-orange-600 ring-orange-200',
+}
+
 function LibraryContent() {
   const supabase = createClient()
   const toast = useToast()
@@ -41,7 +55,11 @@ function LibraryContent() {
   const [allBooks, setAllBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<BookStatus | ''>('')
+
+  // Filtres multi-sélection
+  const [statusFilters, setStatusFilters] = useState<Set<BookStatus>>(new Set())
+  const [physicalFilters, setPhysicalFilters] = useState<Set<string>>(new Set())
+
   const [sortBy, setSortBy] = useState<'date_added'|'title'|'author'|'rating'>('date_added')
   const [showFilters, setShowFilters] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
@@ -54,7 +72,6 @@ function LibraryContent() {
     const { data: all } = await supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
     setAllBooks(all || [])
     let q = supabase.from('bibliotheque_books').select('*').eq('user_id', user.id)
-    if (statusFilter) q = q.eq('status', statusFilter)
     if (sortBy === 'rating') q = q.order('rating', { ascending: false })
     else if (sortBy === 'title') q = q.order('title')
     else if (sortBy === 'author') q = q.order('author')
@@ -62,24 +79,54 @@ function LibraryContent() {
     const { data } = await q
     setBooks(data || [])
     setLoading(false)
-  }, [statusFilter, sortBy])
+  }, [sortBy])
 
   useEffect(() => { loadBooks() }, [loadBooks])
 
-  // Recherche floue
-  const filtered = books.filter(b => {
-    if (!query) return true
-    const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
-    const words = query.toLowerCase().trim().split(/\s+/)
-    const haystack = normalize([b.title, b.author, b.genre || '', b.series_name || ''].join(' '))
-    const haystackRaw = [b.title, b.author, b.genre || '', b.series_name || ''].join(' ').toLowerCase()
-    return words.every(word => {
-      const nw = normalize(word)
-      return haystack.includes(nw) || haystackRaw.includes(word)
+  function toggleStatus(s: BookStatus) {
+    setStatusFilters(prev => {
+      const next = new Set(prev)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return next
     })
+  }
+
+  function togglePhysical(s: string) {
+    setPhysicalFilters(prev => {
+      const next = new Set(prev)
+      next.has(s) ? next.delete(s) : next.add(s)
+      return next
+    })
+  }
+
+  function clearFilters() {
+    setStatusFilters(new Set())
+    setPhysicalFilters(new Set())
+  }
+
+  const hasActiveFilters = statusFilters.size > 0 || physicalFilters.size > 0
+
+  // Filtrage combiné
+  const filtered = books.filter(b => {
+    // Filtre texte
+    if (query) {
+      const normalize = (s: string) => s.toLowerCase().replace(/0+(\d)/g, '$1')
+      const words = query.toLowerCase().trim().split(/\s+/)
+      const haystack = normalize([b.title, b.author, b.genre || '', b.series_name || ''].join(' '))
+      const haystackRaw = [b.title, b.author, b.genre || '', b.series_name || ''].join(' ').toLowerCase()
+      if (!words.every(w => haystack.includes(normalize(w)) || haystackRaw.includes(w))) return false
+    }
+    // Filtre statut lecture
+    if (statusFilters.size > 0 && !statusFilters.has(b.status)) return false
+    // Filtre statut physique
+    if (physicalFilters.size > 0 && !physicalFilters.has((b as any).physical_status)) return false
+    return true
   })
 
   const counts = STATUSES.reduce((a, s) => ({ ...a, [s]: allBooks.filter(b => b.status === s).length }), {} as Record<BookStatus, number>)
+  const physicalCounts = PHYSICAL_STATUSES.reduce((a, { value }) => ({
+    ...a, [value]: allBooks.filter(b => (b as any).physical_status === value).length
+  }), {} as Record<string, number>)
 
   async function addBook(data: Partial<Book>) {
     const { data: { user } } = await supabase.auth.getUser()
@@ -167,20 +214,36 @@ function LibraryContent() {
   return (
     <div className="space-y-4">
 
-      {/* Status pills */}
+      {/* Filtres statut lecture */}
       <div className="-mt-2 flex gap-2 overflow-x-auto py-1 -mx-4 px-4 scrollbar-hide">
-        <button onClick={() => setStatusFilter('')}
+        <button onClick={clearFilters}
           className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all ${
-            statusFilter === '' ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+            !hasActiveFilters ? 'bg-violet text-white shadow-glow' : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
           }`}>
           Tous · {allBooks.length}
         </button>
         {STATUSES.map(s => (
-          <button key={s} onClick={() => setStatusFilter(statusFilter === s ? '' : s)}
+          <button key={s} onClick={() => toggleStatus(s)}
             className={`flex-shrink-0 px-4 py-2 rounded-pill font-black text-sm transition-all whitespace-nowrap ${
-              statusFilter === s ? `${STATUS_BG[s]} shadow-card ring-2 ring-offset-1 ring-current` : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
+              statusFilters.has(s)
+                ? `${STATUS_BG[s]} shadow-card ring-2 ring-offset-1 ring-current`
+                : 'bg-white text-gray-500 shadow-sm hover:shadow-card'
             }`}>
             {STATUS_EMOJI[s]} {s} · {counts[s] || 0}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtres statut physique */}
+      <div className="flex gap-2 overflow-x-auto py-0.5 -mx-4 px-4 scrollbar-hide">
+        {PHYSICAL_STATUSES.map(({ value, emoji, label }) => (
+          <button key={value} onClick={() => togglePhysical(value)}
+            className={`flex-shrink-0 px-3 py-1.5 rounded-pill font-black text-xs transition-all whitespace-nowrap ring-2 ${
+              physicalFilters.has(value)
+                ? `${PHYSICAL_BG[value]} ring-current shadow-sm`
+                : 'bg-white text-gray-400 ring-transparent shadow-sm hover:shadow-card'
+            }`}>
+            {emoji} {label} · {physicalCounts[value] || 0}
           </button>
         ))}
       </div>
@@ -208,11 +271,19 @@ function LibraryContent() {
         </button>
       </div>
 
-      {(query || statusFilter) && (
-        <p className="text-xs font-bold text-gray-400">
-          {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
-          {statusFilter ? ` · ${statusFilter}` : ''}
-        </p>
+      {(query || hasActiveFilters) && (
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-bold text-gray-400 flex-1">
+            {filtered.length} résultat{filtered.length !== 1 ? 's' : ''}
+            {statusFilters.size > 0 && ` · ${Array.from(statusFilters).join(', ')}`}
+            {physicalFilters.size > 0 && ` · ${Array.from(physicalFilters).join(', ')}`}
+          </p>
+          {hasActiveFilters && (
+            <button onClick={clearFilters} className="text-xs font-black text-violet">
+              Tout effacer
+            </button>
+          )}
+        </div>
       )}
 
       {loading ? (
@@ -291,9 +362,25 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
     'À acquérir': 'chip chip-aq',
   }
 
+  const PHYSICAL_CHIP: Record<string, string> = {
+    'Possédé':         'bg-emerald-50 text-emerald-700',
+    'Emprunté biblio': 'bg-blue-50 text-blue-600',
+    'À acheter':       'bg-pink-50 text-pink-600',
+    'À vendre/donner': 'bg-orange-50 text-orange-600',
+  }
+  const PHYSICAL_EMOJI: Record<string, string> = {
+    'Possédé': '🏠', 'Emprunté biblio': '🔄', 'À acheter': '🛍️', 'À vendre/donner': '📤',
+  }
+
   const dateFinished = (book as any).date_finished
     ? new Date((book as any).date_finished + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
+
+  const returnDate = (book as any).return_date
+    ? new Date((book as any).return_date + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
+
+  const physicalStatus = (book as any).physical_status as string | undefined
 
   return (
     <div className="space-y-5 pb-4">
@@ -317,10 +404,16 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
                 🤝 {book.borrower_name}
               </span>
             )}
+            {physicalStatus && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${PHYSICAL_CHIP[physicalStatus] || 'bg-gray-100 text-gray-600'}`}>
+                {PHYSICAL_EMOJI[physicalStatus]} {physicalStatus}
+              </span>
+            )}
             {book.rating > 0 && <span className="text-sm">{'⭐'.repeat(book.rating)}</span>}
           </div>
         </div>
       </div>
+
       <div className="grid grid-cols-2 gap-2">
         {[
           ['Genre', book.genre],
@@ -329,6 +422,7 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
           ['Éditeur', book.publisher],
           ['ISBN', book.isbn],
           ['Terminé le', dateFinished],
+          ['À rendre le', returnDate],
         ].filter(([, v]) => v).map(([k, v]) => (
           <div key={k as string} className="bg-bg-base rounded-2xl p-3">
             <p className="text-[10px] font-black text-gray-400 uppercase">{k}</p>
@@ -336,6 +430,7 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
           </div>
         ))}
       </div>
+
       {book.notes && (
         <div className="bg-amber-light rounded-2xl p-4">
           <p className="text-[10px] font-black text-amber-dark uppercase mb-1.5">📝 Notes</p>
