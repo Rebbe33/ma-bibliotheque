@@ -62,7 +62,6 @@ function ReadingContent() {
         .lte('date', endOfMonth)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false }),
-      // Uniquement les livres En cours
       supabase.from('bibliotheque_books')
         .select('id, title, status')
         .eq('user_id', user.id)
@@ -129,6 +128,7 @@ function ReadingContent() {
 
   const todaySessions = sessions.filter(s => s.date === formatDate(today))
   const todayPages = todaySessions.reduce((a, s) => a + s.pages, 0)
+  const hasReadToday = todaySessions.length > 0
 
   const MONTH_NAMES = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
@@ -202,24 +202,26 @@ function ReadingContent() {
         </div>
       )}
 
-      {/* Stats du jour */}
-      <div className="card p-4 bg-gradient-to-br from-violet to-pink text-white">
-        <p className="font-bold text-white/70 text-xs">AUJOURD'HUI</p>
-        <div className="flex items-end gap-2 mt-1">
-          <p className="font-black text-5xl">{todayPages}</p>
-          <p className="font-bold text-white/80 mb-1">pages</p>
+      {/* Stats du jour — seulement si on a lu aujourd'hui */}
+      {hasReadToday && (
+        <div className="card p-4 bg-gradient-to-br from-violet to-pink text-white">
+          <p className="font-bold text-white/70 text-xs">AUJOURD'HUI</p>
+          <div className="flex items-end gap-2 mt-1">
+            <p className="font-black text-5xl">{todayPages}</p>
+            <p className="font-bold text-white/80 mb-1">pages</p>
+          </div>
+          <p className="text-white/70 text-xs mt-1">
+            {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''}
+            {todaySessions.length > 0 && ` · ${todaySessions.map(s => MOMENT_EMOJI[s.moment || '']).join(' ')}`}
+          </p>
         </div>
-        <p className="text-white/70 text-xs mt-1">
-          {todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''}
-          {todaySessions.length > 0 && ` · ${todaySessions.map(s => MOMENT_EMOJI[s.moment || '']).join(' ')}`}
-        </p>
-      </div>
+      )}
 
       {/* Mini stats */}
       <div className="grid grid-cols-3 gap-2">
         <div className="card p-3 text-center">
-          <Flame size={18} className="mx-auto mb-1 text-coral"/>
-          <p className="font-black text-xl text-ink">{streak}</p>
+          <Flame size={18} className={`mx-auto mb-1 ${streak > 0 ? 'text-coral' : 'text-gray-300'}`}/>
+          <p className={`font-black text-xl ${streak > 0 ? 'text-ink' : 'text-gray-300'}`}>{streak}</p>
           <p className="text-[10px] font-bold text-gray-400">JOURS DE SUITE</p>
         </div>
         <div className="card p-3 text-center">
