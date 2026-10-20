@@ -132,9 +132,10 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
       borrower_name:   form.status === 'Prêté' ? (form.borrower_name || undefined) : undefined,
       ...(form.nationality ? { nationality: form.nationality } : {}),
       ...(form.status === 'Lu' && form.date_finished ? { date_finished: form.date_finished } : { date_finished: null }),
-      physical_status: form.physical_status || null,
-      return_date: form.physical_status === 'Emprunté biblio' && form.return_date ? form.return_date : null,
-    }
+    } as any
+
+    ;(data as any).physical_status = form.physical_status || null
+    ;(data as any).return_date = form.physical_status === 'Emprunté biblio' && form.return_date ? form.return_date : null
     onSave(data)
   }
 
