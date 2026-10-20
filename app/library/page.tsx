@@ -291,6 +291,10 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
     'À acquérir': 'chip chip-aq',
   }
 
+  const dateFinished = (book as any).date_finished
+    ? new Date((book as any).date_finished + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : null
+
   return (
     <div className="space-y-5 pb-4">
       <div className="flex gap-4 items-start">
@@ -318,7 +322,14 @@ function BookDetail({ book, onEdit }: { book: Book; onEdit: () => void }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        {[['Genre',book.genre],['Année',book.year],['Pages',book.pages&&`${book.pages} pages`],['Éditeur',book.publisher],['ISBN',book.isbn]].filter(([,v])=>v).map(([k,v])=>(
+        {[
+          ['Genre', book.genre],
+          ['Année', book.year],
+          ['Pages', book.pages && `${book.pages} pages`],
+          ['Éditeur', book.publisher],
+          ['ISBN', book.isbn],
+          ['Terminé le', dateFinished],
+        ].filter(([, v]) => v).map(([k, v]) => (
           <div key={k as string} className="bg-bg-base rounded-2xl p-3">
             <p className="text-[10px] font-black text-gray-400 uppercase">{k}</p>
             <p className="font-bold text-sm text-ink mt-0.5">{v}</p>
