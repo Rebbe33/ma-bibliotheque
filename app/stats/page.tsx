@@ -90,7 +90,7 @@ export default function StatsPage() {
   const totalPagesYear = yearSessions.reduce((a, s) => a + s.pages, 0)
 
   // Livres lus cette année = livres avec des sessions cette année (approx)
-  const booksReadThisYear = [...new Set(yearSessions.filter(s => s.book_id).map(s => s.book_id))]
+  const booksReadThisYear = Array.from(new Set(yearSessions.filter(s => s.book_id).map(s => s.book_id as string)))
   const booksLuYear = luBooks.length // total lu (pas de date_finished sur les livres)
 
   // Pages par mois pour l'année sélectionnée
