@@ -41,6 +41,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
   const [form, setForm] = useState({
     title:         initial?.title         || '',
     author:        initial?.author        || '',
+    nationality:   (initial as any)?.nationality || '',
     genre:         initial?.genre         || '',
     year:          initial?.year          ? String(initial.year) : '',
     pages:         initial?.pages         ? String(initial.pages) : '',
@@ -126,6 +127,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
       notes:           form.notes || undefined,
       google_books_id: form.google_books_id || undefined,
       borrower_name:   form.status === 'Prêté' ? (form.borrower_name || undefined) : undefined,
+      ...(form.nationality ? { nationality: form.nationality } : {}),
     }
     onSave(data)
   }
@@ -252,17 +254,24 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
             </div>
           )}
 
-          {/* Titre + Auteur */}
+          {/* Titre + Auteur + Nationalité */}
           <div className="space-y-2">
             <div>
               <label className="block text-xs font-black text-gray-500 mb-1">TITRE *</label>
               <input value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))}
                 placeholder="Titre du livre" className="input" />
             </div>
-            <div>
-              <label className="block text-xs font-black text-gray-500 mb-1">AUTEUR</label>
-              <input value={form.author} onChange={e => setForm(f => ({...f, author: e.target.value}))}
-                placeholder="Nom de l'auteur" className="input" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs font-black text-gray-500 mb-1">AUTEUR</label>
+                <input value={form.author} onChange={e => setForm(f => ({...f, author: e.target.value}))}
+                  placeholder="Nom de l'auteur" className="input text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-gray-500 mb-1">NATIONALITÉ</label>
+                <input value={form.nationality} onChange={e => setForm(f => ({...f, nationality: e.target.value}))}
+                  placeholder="Française, US…" className="input text-sm" />
+              </div>
             </div>
           </div>
 
