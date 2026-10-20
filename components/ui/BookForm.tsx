@@ -41,9 +41,11 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
   const [form, setForm] = useState({
     title:         initial?.title         || '',
     author:        initial?.author        || '',
-    nationality:   (initial as any)?.nationality || '',
-    date_finished: (initial as any)?.date_finished || '',
-    genre:         initial?.genre         || '',
+    nationality:    (initial as any)?.nationality    || '',
+    date_finished:  (initial as any)?.date_finished  || '',
+    physical_status:(initial as any)?.physical_status || '',
+    return_date:    (initial as any)?.return_date    || '',
+    genre:          initial?.genre         || '',
     year:          initial?.year          ? String(initial.year) : '',
     pages:         initial?.pages         ? String(initial.pages) : '',
     publisher:     initial?.publisher     || '',
@@ -130,6 +132,8 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
       borrower_name:   form.status === 'Prêté' ? (form.borrower_name || undefined) : undefined,
       ...(form.nationality ? { nationality: form.nationality } : {}),
       ...(form.status === 'Lu' && form.date_finished ? { date_finished: form.date_finished } : { date_finished: null }),
+      physical_status: form.physical_status || null,
+      return_date: form.physical_status === 'Emprunté biblio' && form.return_date ? form.return_date : null,
     }
     onSave(data)
   }
@@ -317,6 +321,43 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
               <label className="block text-xs font-black text-gray-500 mb-1">DATE DE LECTURE TERMINÉE</label>
               <input type="date" value={form.date_finished}
                 onChange={e => setForm(f => ({...f, date_finished: e.target.value}))}
+                className="input text-sm" />
+            </div>
+          )}
+
+          {/* Possession physique */}
+          <div>
+            <label className="block text-xs font-black text-gray-500 mb-1.5">POSSESSION PHYSIQUE</label>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                ['Possédé',         '🏠'],
+                ['Emprunté biblio', '🔄'],
+                ['À acheter',       '🛍️'],
+                ['À vendre/donner', '📤'],
+              ] as const).map(([s, emoji]) => (
+                <button key={s}
+                  onClick={() => setForm(f => ({
+                    ...f,
+                    physical_status: f.physical_status === s ? '' : s,
+                    return_date: f.physical_status === s ? '' : (s !== 'Emprunté biblio' ? '' : f.return_date),
+                  }))}
+                  className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all ring-2 ${
+                    form.physical_status === s
+                      ? 'bg-violet text-white ring-violet'
+                      : 'bg-gray-50 text-gray-500 ring-transparent hover:ring-gray-200'
+                  }`}>
+                  {emoji} {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Date de retour — visible uniquement si Emprunté biblio */}
+          {form.physical_status === 'Emprunté biblio' && (
+            <div>
+              <label className="block text-xs font-black text-gray-500 mb-1">DATE DE RETOUR</label>
+              <input type="date" value={form.return_date}
+                onChange={e => setForm(f => ({...f, return_date: e.target.value}))}
                 className="input text-sm" />
             </div>
           )}
