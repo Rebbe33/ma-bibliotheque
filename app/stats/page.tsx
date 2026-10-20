@@ -79,39 +79,42 @@ export default function StatsPage() {
   const maxR = Math.max(...ratings.map(x => x.n), 1)
 
   // ── Stats par année ─────────────────────────────────────────────
-  const availableYears = Array.from(new Set(
-    sessions.map(s => new Date(s.date).getFullYear())
-  )).sort((a, b) => b - a)
-  if (!availableYears.includes(selectedYear) && availableYears.length > 0) {
-    // keep selectedYear as is if no sessions, it's fine
-  }
+  // Années disponibles : union des années de sessions ET des date_finished
+  const yearsFromSessions = sessions.map(s => new Date(s.date).getFullYear())
+  const yearsFromFinished = luBooks
+    .filter(b => (b as any).date_finished)
+    .map(b => new Date((b as any).date_finished + 'T12:00:00').getFullYear())
+  const availableYears = Array.from(new Set([...yearsFromSessions, ...yearsFromFinished])).sort((a, b) => b - a)
 
   const yearSessions = sessions.filter(s => new Date(s.date).getFullYear() === selectedYear)
   const totalPagesYear = yearSessions.reduce((a, s) => a + s.pages, 0)
 
-  // Livres lus cette année = livres avec des sessions cette année (approx)
-  const booksReadThisYear = Array.from(new Set(yearSessions.filter(s => s.book_id).map(s => s.book_id as string)))
-  const booksLuYear = luBooks.length // total lu (pas de date_finished sur les livres)
+  // Livres lus cette année = livres avec date_finished dans l'année sélectionnée (fiable)
+  const booksFinishedThisYear = luBooks.filter(b => {
+    const df = (b as any).date_finished
+    if (!df) return false
+    return new Date(df + 'T12:00:00').getFullYear() === selectedYear
+  })
+  const booksReadThisYear = booksFinishedThisYear
 
-  // Pages par mois pour l'année sélectionnée
+  // Pages par mois pour l'année sélectionnée (basé sur les sessions)
   const pagesByMonth = Array.from({ length: 12 }, (_, i) => {
     const monthSessions = yearSessions.filter(s => new Date(s.date).getMonth() === i)
     return monthSessions.reduce((a, s) => a + s.pages, 0)
   })
   const maxMonth = Math.max(...pagesByMonth, 1)
 
-  // Genres par année (livres avec sessions cette année)
-  const booksThisYearIds = new Set(yearSessions.filter(s => s.book_id).map(s => s.book_id))
+  // Genres par année (livres terminés cette année via date_finished)
   const genresYear: Record<string, number> = {}
-  books.filter(b => b.id && booksThisYearIds.has(b.id)).forEach(b => {
+  booksFinishedThisYear.forEach(b => {
     if (b.genre) genresYear[b.genre] = (genresYear[b.genre] || 0) + 1
   })
   const topGenresYear = Object.entries(genresYear).sort((a, b) => b[1] - a[1]).slice(0, 6)
   const maxGY = topGenresYear[0]?.[1] || 1
 
-  // Nationalités par année
+  // Nationalités par année (livres terminés cette année via date_finished)
   const nationsYear: Record<string, number> = {}
-  books.filter(b => b.id && booksThisYearIds.has(b.id)).forEach(b => {
+  booksFinishedThisYear.forEach(b => {
     const nat = (b as any).nationality || (b as any).author_nationality
     if (nat) nationsYear[nat] = (nationsYear[nat] || 0) + 1
   })
@@ -233,7 +236,7 @@ export default function StatsPage() {
 
         {availableYears.length === 0 ? (
           <div className="card p-6 text-center">
-            <p className="text-gray-400 text-sm">Ajoute des sessions de lecture pour voir les stats annuelles !</p>
+            <p className="text-gray-400 text-sm">Ajoute des sessions de lecture ou des dates de fin pour voir les stats annuelles !</p>
           </div>
         ) : (
           <>
@@ -242,7 +245,7 @@ export default function StatsPage() {
               <div className="card p-4 text-center">
                 <div className="text-2xl mb-1">📚</div>
                 <div className="font-black text-2xl text-ink">{booksReadThisYear.length}</div>
-                <div className="text-xs font-bold text-gray-400 mt-0.5">LIVRES LUS</div>
+                <div className="text-xs font-bold text-gray-400 mt-0.5">LIVRES TERMINÉS</div>
               </div>
               <div className="card p-4 text-center">
                 <div className="text-2xl mb-1">📄</div>
