@@ -89,8 +89,12 @@ function mergeResults(books: any[]): any[] {
 
 // ── BnF (Bibliothèque nationale de France) ──
 async function searchBnF(query: string, page = 0) {
-  // Construire la requête CQL : chercher dans tous les champs bib
-  const cql = `bib.anywhere all "${query.replace(/"/g, ' ')}"`
+  // Si la query ressemble à un ISBN, chercher par ISBN ; sinon cherche texte libre
+  const cleanQuery = query.replace(/[-\s]/g, '')
+  const isIsbn = /^\d{10,13}$/.test(cleanQuery)
+  const cql = isIsbn
+    ? `bib.isbn adj "${cleanQuery}"`
+    : `bib.anywhere all "${query.replace(/"/g, ' ')}"`
   const params = new URLSearchParams({
     operation: 'searchRetrieve',
     version: '1.2',
@@ -112,7 +116,7 @@ async function searchBnF(query: string, page = 0) {
 }
 
 function getAll(content: string, tag: string): string[] {
-  const rx = new RegExp(`<(?:dc:|oai_dc:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:dc:|oai_dc:)?${tag}>`, 'gi')
+  const rx = new RegExp(`<(?:[a-z_]+:)?${tag}(?:\\s[^>]*)?>([\s\S]*?)<\\/(?:[a-z_]+:)?${tag}>`, 'gi')
   return Array.from(content.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
 }
 function getFirst(content: string, tag: string): string { return getAll(content, tag)[0] || '' }
@@ -120,7 +124,8 @@ function getFirst(content: string, tag: string): string { return getAll(content,
 function parseBnFDublinCore(xml: string): any[] {
   const books: any[] = []
 
-  const recordMatches = Array.from(xml.matchAll(/<recordData[^>]*>([\s\S]*?)<\/recordData>/gi))
+  // srw:recordData dans le XML BnF
+  const recordMatches = Array.from(xml.matchAll(/<(?:[a-z]+:)?recordData[^>]*>([\s\S]*?)<\/(?:[a-z]+:)?recordData>/gi))
 
   for (const [, recordContent] of recordMatches) {
 
@@ -129,7 +134,7 @@ function parseBnFDublinCore(xml: string): any[] {
 
     // Filtrer : ne garder que les livres (pas les partitions, films, etc.)
     const types = getAll(recordContent, 'type').join(' ').toLowerCase()
-    if (types && !types.includes('text') && !types.includes('livre') && types.includes('image')) continue
+    if (types && types.includes('image') && !types.includes('text') && !types.includes('imprimé')) continue
 
     // Auteurs
     const creators = getAll(recordContent, 'creator')
