@@ -87,7 +87,7 @@ function mergeResults(books: any[]): any[] {
   return unique.sort((a, b) => (sourceOrder[a.source] ?? 9) - (sourceOrder[b.source] ?? 9))
 }
 
-// ── BnF (Bibliothèque nationale de France) ──
+// ── BnF (Bibliothèque nationale de France) v4 ──
 async function searchBnF(query: string, page = 0) {
   // Si la query ressemble à un ISBN, chercher par ISBN ; sinon cherche texte libre
   const cleanQuery = query.replace(/[-\s]/g, '')
@@ -118,7 +118,11 @@ async function searchBnF(query: string, page = 0) {
 }
 
 function getAll(content: string, tag: string): string[] {
-  const rx = new RegExp(String.raw`<(?:[a-z_]+:)?${tag}(?:\s[^>]*)?>([\\s\\S]*?)<\/(?:[a-z_]+:)?${tag}>`, 'gi')
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  // Utiliser (.|\\n|\\r) pour matcher n'importe quel caractère y compris les sauts de ligne
+  // Double backslash car dans un template literal \\n = \n (newline) en runtime
+  const open = '<(?:[a-z_]+:)?' + escaped + '(?:[^>]*)?>((.|\\n|\\r)*?)<\\/(?:[a-z_]+:)?' + escaped + '>'
+  const rx = new RegExp(open, 'gi')
   return Array.from(content.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
 }
 function getFirst(content: string, tag: string): string { return getAll(content, tag)[0] || '' }
