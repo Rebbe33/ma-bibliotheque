@@ -107,12 +107,18 @@ async function searchBnF(query: string, page = 0) {
   try {
     // BnF requiert %20 pour les espaces dans CQL (URLSearchParams utilise + qui n'est pas reconnu)
     const bnfUrl = `https://catalogue.bnf.fr/api/SRU?${params.toString().replace(/\+/g, '%20')}`
+    console.log('[BnF] url:', bnfUrl)
     const res = await fetch(bnfUrl, {
       headers: { Accept: 'application/xml, text/xml' },
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return []
     const xml = await res.text()
+    const numRecords = xml.match(/<(?:[a-z]+:)?numberOfRecords[^>]*>(\d+)</)?.[1] ?? '?'
+    const hasTitle = xml.includes('dc:title') || xml.includes('<title>')
+    const hasExplain = xml.includes('zr:explain') || xml.includes('explainResponse')
+    console.log('[BnF] numberOfRecords:', numRecords, '| hasTitle:', hasTitle, '| isExplain:', hasExplain)
+    if (!hasTitle) console.log('[BnF] xml (600):', xml.slice(0, 600))
     return parseBnFDublinCore(xml)
   } catch (e) { console.log('[BnF] error:', e); return [] }
 }
