@@ -109,10 +109,14 @@ async function searchBnF(query: string, page = 0) {
       headers: { Accept: 'application/xml, text/xml' },
       signal: AbortSignal.timeout(8000),
     })
-    if (!res.ok) return []
+    console.log('[BnF] status:', res.status, 'url:', `https://catalogue.bnf.fr/api/SRU?${params}`)
+    if (!res.ok) { console.log('[BnF] not ok'); return [] }
     const xml = await res.text()
-    return parseBnFDublinCore(xml)
-  } catch { return [] }
+    console.log('[BnF] xml preview:', xml.slice(0, 500))
+    const results = parseBnFDublinCore(xml)
+    console.log('[BnF] parsed results:', results.length, results[0]?.title)
+    return results
+  } catch (e) { console.log('[BnF] error:', e); return [] }
 }
 
 function getAll(content: string, tag: string): string[] {
