@@ -115,12 +115,12 @@ function parseBnFDublinCore(xml: string): any[] {
   const books: any[] = []
 
   // Extraire chaque <recordData>…</recordData>
-  const recordMatches = xml.matchAll(/<recordData[^>]*>([\s\S]*?)<\/recordData>/gi)
+  const recordMatches = Array.from(xml.matchAll(/<recordData[^>]*>([\s\S]*?)<\/recordData>/gi))
 
   for (const [, recordContent] of recordMatches) {
     function getAll(tag: string): string[] {
       const rx = new RegExp(`<(?:dc:|oai_dc:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:dc:|oai_dc:)?${tag}>`, 'gi')
-      return [...recordContent.matchAll(rx)].map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+      return Array.from(recordContent.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
     }
     function getFirst(tag: string): string { return getAll(tag)[0] || '' }
 
