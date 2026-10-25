@@ -109,28 +109,14 @@ async function searchBnF(query: string, page = 0) {
       headers: { Accept: 'application/xml, text/xml' },
       signal: AbortSignal.timeout(8000),
     })
-    console.log('[BnF] status:', res.status, 'url:', `https://catalogue.bnf.fr/api/SRU?${params}`)
-    if (!res.ok) { console.log('[BnF] not ok'); return [] }
+    if (!res.ok) return []
     const xml = await res.text()
-    // Log du nombre de résultats annoncés par BnF
-    const numRecordsMatch = xml.match(/<(?:[a-z]+:)?numberOfRecords[^>]*>(\d+)</)
-    console.log('[BnF] numberOfRecords:', numRecordsMatch?.[1] ?? 'not found')
-    console.log('[BnF] xml preview:', xml.slice(0, 800))
-    // Compter les balises recordData présentes
-    const rdCount = (xml.match(/<(?:[a-z]+:)?recordData/gi) || []).length
-    console.log('[BnF] recordData tags found:', rdCount)
-    // Logger le contenu brut du premier recordData
-    const rdMatch = xml.match(/<(?:[a-z]+:)?recordData[^>]*>([\s\S]*?)<\/(?:[a-z]+:)?recordData>/i)
-    if (rdMatch) console.log('[BnF] first recordData content:', rdMatch[1].slice(0, 600))
-    else console.log('[BnF] no recordData match in full XML')
-    const results = parseBnFDublinCore(xml)
-    console.log('[BnF] parsed results:', results.length, results[0]?.title)
-    return results
+    return parseBnFDublinCore(xml)
   } catch (e) { console.log('[BnF] error:', e); return [] }
 }
 
 function getAll(content: string, tag: string): string[] {
-  const rx = new RegExp(`<(?:[a-z_]+:)?${tag}(?:\\s[^>]*)?>([\s\S]*?)<\\/(?:[a-z_]+:)?${tag}>`, 'gi')
+  const rx = new RegExp(`<(?:[a-z_]+:)?${tag}(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\/(?:[a-z_]+:)?${tag}>`, 'gi')
   return Array.from(content.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
 }
 function getFirst(content: string, tag: string): string { return getAll(content, tag)[0] || '' }
