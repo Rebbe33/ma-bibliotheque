@@ -112,7 +112,13 @@ async function searchBnF(query: string, page = 0) {
     console.log('[BnF] status:', res.status, 'url:', `https://catalogue.bnf.fr/api/SRU?${params}`)
     if (!res.ok) { console.log('[BnF] not ok'); return [] }
     const xml = await res.text()
-    console.log('[BnF] xml preview:', xml.slice(0, 500))
+    // Log du nombre de résultats annoncés par BnF
+    const numRecordsMatch = xml.match(/<(?:[a-z]+:)?numberOfRecords[^>]*>(\d+)</)
+    console.log('[BnF] numberOfRecords:', numRecordsMatch?.[1] ?? 'not found')
+    console.log('[BnF] xml preview:', xml.slice(0, 800))
+    // Compter les balises recordData présentes
+    const rdCount = (xml.match(/<(?:[a-z]+:)?recordData/gi) || []).length
+    console.log('[BnF] recordData tags found:', rdCount)
     const results = parseBnFDublinCore(xml)
     console.log('[BnF] parsed results:', results.length, results[0]?.title)
     return results
