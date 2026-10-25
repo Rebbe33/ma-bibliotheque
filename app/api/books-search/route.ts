@@ -78,7 +78,7 @@ function mergeResults(books: any[]): any[] {
   // Dédoublonner les valeurs (une Map peut pointer plusieurs clés vers le même objet)
   const unique: any[] = []
   const added = new Set<any>()
-  for (const v of seen.values()) {
+  for (const v of Array.from(seen.values())) {
     if (!added.has(v)) { unique.push(v); added.add(v) }
   }
 
