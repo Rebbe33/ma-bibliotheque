@@ -215,7 +215,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
                       : <div className="w-9 h-[50px] rounded-lg bg-gray-200 flex items-center justify-center text-base flex-shrink-0">📖</div>
                     }
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
+                      <p className="font-bold text-xs text-ink line-clamp-3 leading-snug">{book.title}</p>
                       <p className="text-[11px] text-gray-500">{book.authors?.join(', ')}</p>
                       {year && <p className="text-[11px] text-gray-400">{year}{book.pageCount ? ` · ${book.pageCount}p` : ''}</p>}
                     </div>
