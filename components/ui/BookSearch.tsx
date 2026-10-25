@@ -159,7 +159,7 @@ const sorted = [...data].sort((a, b) => {
                   : <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-violet to-pink flex items-center justify-center text-xl flex-shrink-0">📖</div>
                 }
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(book)}>
-                  <p className="font-bold text-sm text-ink line-clamp-2 leading-snug">{book.title}</p>
+                  <p className="font-bold text-sm text-ink line-clamp-3 leading-snug">{book.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{book.authors.join(', ')}</p>
                   <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
                     {year && <span className="text-[11px] bg-amber-light text-amber-dark font-bold px-2 py-0.5 rounded-full">{year}</span>}
