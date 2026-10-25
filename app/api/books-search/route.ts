@@ -105,26 +105,15 @@ async function searchBnF(query: string, page = 0) {
   })
 
   try {
-    const res = await fetch(`https://catalogue.bnf.fr/api/SRU?${params}`, {
+    // BnF requiert %20 pour les espaces dans CQL (URLSearchParams utilise + qui n'est pas reconnu)
+    const bnfUrl = `https://catalogue.bnf.fr/api/SRU?${params.toString().replace(/\+/g, '%20')}`
+    const res = await fetch(bnfUrl, {
       headers: { Accept: 'application/xml, text/xml' },
       signal: AbortSignal.timeout(8000),
     })
     if (!res.ok) return []
     const xml = await res.text()
-    const results = parseBnFDublinCore(xml)
-    console.log('[BnF]', results.length, 'results | recordData count:', (xml.match(/<(?:[a-z]+:)?recordData/gi)||[]).length)
-    if (results.length === 0) {
-      const rx = /<(?:[a-z]+:)?recordData[^>]*>([\s\S]*?)<\/(?:[a-z]+:)?recordData>/gi
-      const m = Array.from(xml.matchAll(rx))
-      if (m.length) {
-        const content = m[0][1]
-        const titleRx = new RegExp(`<(?:[a-z_]+:)?title(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)<\\/(?:[a-z_]+:)?title>`, 'gi')
-        const titles = Array.from(content.matchAll(titleRx)).map(x => x[1])
-        console.log('[BnF] titles found in recordData:', titles)
-        console.log('[BnF] recordData raw (300):', content.slice(0, 300))
-      }
-    }
-    return results
+    return parseBnFDublinCore(xml)
   } catch (e) { console.log('[BnF] error:', e); return [] }
 }
 
