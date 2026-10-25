@@ -69,30 +69,7 @@ const sorted = [...data].sort((a, b) => {
 
   return (
     <div className="space-y-3">
-      {/* Source toggle */}
-      <div className="flex p-1 bg-gray-100 rounded-2xl">
-        {([['google','🔍 Google Books'],['openlibrary','📖 Open Library']] as const).map(([s, label]) => (
-          <button key={s} onClick={() => changeSource(s)}
-            className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${
-              source === s ? 'bg-white text-violet shadow-sm' : 'text-gray-400 hover:text-gray-600'
-            }`}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Langue toggle */}
-      <div className="flex items-center justify-between px-1">
-        <span className="text-xs font-black text-gray-500">Langue</span>
-        <div className="flex p-0.5 bg-gray-100 rounded-xl">
-          {([['fr','🇫🇷 Français', true],['all','🌍 Toutes', false]] as const).map(([, label, val]) => (
-            <button key={label} onClick={() => changeLang(val)}
-              className={`px-3 py-1 rounded-xl font-black text-xs transition-all ${
-                langFr === val ? 'bg-white text-violet shadow-sm' : 'text-gray-400'
-              }`}>{label}</button>
-          ))}
-        </div>
-      </div>
+     
 
       {/* Search input */}
       <div className="relative">
@@ -159,7 +136,7 @@ const sorted = [...data].sort((a, b) => {
                   : <div className="w-10 h-14 rounded-lg bg-gradient-to-br from-violet to-pink flex items-center justify-center text-xl flex-shrink-0">📖</div>
                 }
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(book)}>
-                  <p className="font-bold text-sm text-ink line-clamp-3 leading-snug">{book.title}</p>
+                  <p className="font-bold text-sm text-ink leading-snug">{book.title}</p>
                   <p className="text-xs text-gray-500 mt-0.5">{book.authors.join(', ')}</p>
                   <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
                     {year && <span className="text-[11px] bg-amber-light text-amber-dark font-bold px-2 py-0.5 rounded-full">{year}</span>}
