@@ -119,6 +119,10 @@ async function searchBnF(query: string, page = 0) {
     // Compter les balises recordData présentes
     const rdCount = (xml.match(/<(?:[a-z]+:)?recordData/gi) || []).length
     console.log('[BnF] recordData tags found:', rdCount)
+    // Logger le contenu brut du premier recordData
+    const rdMatch = xml.match(/<(?:[a-z]+:)?recordData[^>]*>([\s\S]*?)<\/(?:[a-z]+:)?recordData>/i)
+    if (rdMatch) console.log('[BnF] first recordData content:', rdMatch[1].slice(0, 600))
+    else console.log('[BnF] no recordData match in full XML')
     const results = parseBnFDublinCore(xml)
     console.log('[BnF] parsed results:', results.length, results[0]?.title)
     return results
