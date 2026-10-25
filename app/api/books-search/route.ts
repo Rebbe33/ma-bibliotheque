@@ -111,45 +111,45 @@ async function searchBnF(query: string, page = 0) {
   } catch { return [] }
 }
 
+function getAll(content: string, tag: string): string[] {
+  const rx = new RegExp(`<(?:dc:|oai_dc:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:dc:|oai_dc:)?${tag}>`, 'gi')
+  return Array.from(content.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
+}
+function getFirst(content: string, tag: string): string { return getAll(content, tag)[0] || '' }
+
 function parseBnFDublinCore(xml: string): any[] {
   const books: any[] = []
 
-  // Extraire chaque <recordData>…</recordData>
   const recordMatches = Array.from(xml.matchAll(/<recordData[^>]*>([\s\S]*?)<\/recordData>/gi))
 
   for (const [, recordContent] of recordMatches) {
-    function getAll(tag: string): string[] {
-      const rx = new RegExp(`<(?:dc:|oai_dc:)?${tag}[^>]*>([\\s\\S]*?)<\\/(?:dc:|oai_dc:)?${tag}>`, 'gi')
-      return Array.from(recordContent.matchAll(rx)).map(m => m[1].replace(/<[^>]+>/g, '').trim()).filter(Boolean)
-    }
-    function getFirst(tag: string): string { return getAll(tag)[0] || '' }
 
-    const title = getFirst('title')
+    const title = getFirst(recordContent, 'title')
     if (!title) continue
 
     // Filtrer : ne garder que les livres (pas les partitions, films, etc.)
-    const types = getAll('type').join(' ').toLowerCase()
+    const types = getAll(recordContent, 'type').join(' ').toLowerCase()
     if (types && !types.includes('text') && !types.includes('livre') && types.includes('image')) continue
 
     // Auteurs
-    const creators = getAll('creator')
+    const creators = getAll(recordContent, 'creator')
     // Format BnF : "Nom, Prénom (1970-....)" — on nettoie
     const authors = creators.map(c => c.replace(/\s*\(\d{4}.*?\)/, '').replace(/\s*\[.*?\]/, '').trim())
 
     // ISBN depuis dc:identifier
-    const identifiers = getAll('identifier')
+    const identifiers = getAll(recordContent, 'identifier')
     const isbns = identifiers
       .filter(id => /isbn/i.test(id) || /^97[89]/.test(id.replace(/[-\s]/g, '')))
       .map(id => id.replace(/^ISBN\s*/i, '').replace(/[-\s]/g, '').trim())
       .filter(id => /^\d{10,13}$/.test(id))
 
     // Date
-    const rawDate = getFirst('date')
+    const rawDate = getFirst(recordContent, 'date')
     const dateMatch = rawDate.match(/\d{4}/)
     const publishedDate = dateMatch ? dateMatch[0] : ''
 
     // Pages depuis dc:format : "1 vol. (248 p.)"
-    const formats = getAll('format')
+    const formats = getAll(recordContent, 'format')
     let pageCount: number | undefined
     for (const f of formats) {
       const m = f.match(/(\d+)\s*p\./)
@@ -157,10 +157,10 @@ function parseBnFDublinCore(xml: string): any[] {
     }
 
     // Éditeur depuis dc:publisher
-    const publisher = getFirst('publisher')
+    const publisher = getFirst(recordContent, 'publisher')
 
     // Genres/sujets
-    const subjects = getAll('subject').slice(0, 3)
+    const subjects = getAll(recordContent, 'subject').slice(0, 3)
 
     books.push({
       id: 'bnf_' + (identifiers.find(i => i.startsWith('http')) || Math.random().toString(36).slice(2)),
