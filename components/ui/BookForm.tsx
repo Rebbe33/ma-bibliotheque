@@ -37,7 +37,6 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GoogleBook[]>([])
   const [searching, setSearching] = useState(false)
-  const [source, setSource] = useState<'google' | 'openlibrary'>('google')
   const [form, setForm] = useState({
     title:         initial?.title         || '',
     author:        initial?.author        || '',
@@ -89,7 +88,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
     if (!query.trim()) return
     setSearching(true); setResults([])
     try {
-      const res = await fetch(`/api/books-search?q=${encodeURIComponent(query)}&source=${source}&lang=fr`)
+      const res = await fetch(`/api/books-search?q=${encodeURIComponent(query)}&lang=fr`)
       const data: GoogleBook[] = await res.json()
       setResults(data)
     } catch { setResults([]) }
@@ -147,28 +146,14 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
     <div className="space-y-4 pb-2">
       {/* Tabs */}
       {!initial && (
-        <>
-          <div className="flex p-1 bg-gray-100 rounded-2xl">
-            {(['search', 'manual'] as const).map(t => (
-              <button key={t} onClick={() => setTab(t)}
-                className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${tab === t ? 'bg-white text-violet shadow-sm' : 'text-gray-400'}`}>
-                {t === 'search' ? '🔍 Rechercher' : '✏️ Manuel'}
-              </button>
-            ))}
-          </div>
-
-          {/* Source toggle */}
-          {tab === 'search' && (
-            <div className="flex p-1 bg-gray-100 rounded-2xl">
-              {([['google', '🔍 Google Books'], ['openlibrary', '📖 Open Library']] as const).map(([s, label]) => (
-                <button key={s} onClick={() => { setSource(s); setResults([]) }}
-                  className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${source === s ? 'bg-white text-violet shadow-sm' : 'text-gray-400'}`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+        <div className="flex p-1 bg-gray-100 rounded-2xl">
+          {(['search', 'manual'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`flex-1 py-2 rounded-xl font-black text-sm transition-all ${tab === t ? 'bg-white text-violet shadow-sm' : 'text-gray-400'}`}>
+              {t === 'search' ? '🔍 Rechercher' : '✏️ Manuel'}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Search tab */}
@@ -251,7 +236,7 @@ export default function BookForm({ initial, onSave, onCancel, onAddToWishlist }:
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl">
               <Image src={form.cover_url} alt="Cover" width={48} height={68} className="rounded-xl object-cover shadow-sm" />
               <div className="flex-1 min-w-0">
-                <p className="font-black text-sm text-ink line-clamp-1">{form.title || 'Sans titre'}</p>
+                <p className="font-black text-sm text-ink line-clamp-2 leading-snug">{form.title || 'Sans titre'}</p>
                 <p className="text-xs text-gray-500">{form.author || 'Auteur inconnu'}</p>
               </div>
               <button onClick={() => setForm(f => ({ ...f, cover_url: '' }))}
