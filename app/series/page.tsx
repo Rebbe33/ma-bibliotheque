@@ -71,7 +71,7 @@ function EditSeriesSheet({ series, onRename, onUpdateBook, onRemoveBook }: {
                   : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-sm flex-shrink-0`}>📖</div>
                 }
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-ink line-clamp-1">{book.title}</p>
+                  <p className="font-bold text-sm text-ink line-clamp-2 leading-snug">{book.title}</p>
                   <p className="text-xs text-gray-400">{book.author}</p>
                 </div>
                 <button onClick={() => onRemoveBook(book.id)}
@@ -125,7 +125,6 @@ function AddToSeriesSheet({ seriesName, onClose, onAdded }: {
   const [searching, setSearching] = useState(false)
   const [mode, setMode] = useState<'one' | 'bulk'>('one')
   const [adding, setAdding] = useState(false)
-  const [source, setSource] = useState<'google' | 'openlibrary'>('google')
 
   // Library mode state
   const [libraryBooks, setLibraryBooks] = useState<LibraryBookWithMeta[]>([])
@@ -191,7 +190,7 @@ function AddToSeriesSheet({ seriesName, onClose, onAdded }: {
     if (!searchQuery.trim()) return
     setSearching(true); setResults([])
     try {
-      const res = await window.fetch(`/api/books-search?q=${encodeURIComponent(searchQuery)}&source=${source}&lang=fr`)
+      const res = await window.fetch(`/api/books-search?q=${encodeURIComponent(searchQuery)}&lang=fr`)
       const data: GoogleBook[] = await res.json()
       setResults(data.map((b, i) => ({
         ...b,
@@ -315,7 +314,7 @@ function AddToSeriesSheet({ seriesName, onClose, onAdded }: {
                       : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                     }
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
+                      <p className="font-bold text-xs text-ink line-clamp-2 leading-snug">{book.title}</p>
                       <p className="text-[11px] text-gray-500">{book.author}</p>
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CHIP[book.status]}`}>{book.status}</span>
                     </div>
@@ -349,15 +348,6 @@ function AddToSeriesSheet({ seriesName, onClose, onAdded }: {
               <button key={m} onClick={() => { setMode(m); setResults([]) }}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl font-black text-xs transition-all ${mode === m ? 'bg-white text-violet shadow-sm' : 'text-gray-400'}`}>
                 {m === 'one' ? <List size={13} /> : <Layers size={13} />} {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex p-1 bg-gray-100 rounded-2xl">
-            {([['google', '🔍 Google Books'], ['openlibrary', '📖 Open Library']] as const).map(([s, label]) => (
-              <button key={s} onClick={() => { setSource(s); setResults([]) }}
-                className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${source === s ? 'bg-white text-violet shadow-sm' : 'text-gray-400'}`}>
-                {label}
               </button>
             ))}
           </div>
@@ -418,7 +408,7 @@ function AddToSeriesSheet({ seriesName, onClose, onAdded }: {
                         : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                       }
                       <div className="flex-1 min-w-0">
-                        <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
+                        <p className="font-bold text-xs text-ink line-clamp-2 leading-snug">{book.title}</p>
                         <p className="text-[11px] text-gray-500">{book.authors.join(', ')}</p>
                         {year && <p className="text-[11px] text-gray-400">{year}{book.pageCount ? ` · ${book.pageCount}p` : ''}</p>}
                       </div>
@@ -474,7 +464,6 @@ function SeriesContent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [page, setPage] = useState(0)
   const [hasMore, setHasMore] = useState(false)
-  const [source, setSource] = useState<'google' | 'openlibrary'>('google')
   const [adding, setAdding] = useState(false)
 
   // Create mode — library state
@@ -598,12 +587,12 @@ function SeriesContent() {
     toast(`"${book.title}" ajouté aux souhaits ! ✨`, 'success')
   }
 
-  async function doSearch(q = searchQuery, p = 0, src = source) {
+  async function doSearch(q = searchQuery, p = 0) {
     if (!q.trim()) return
     if (p === 0) { setSearching(true); setResults([]) }
     else setLoadingMore(true)
     try {
-      const res = await window.fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}&source=${src}`)
+      const res = await window.fetch(`/api/books-search?q=${encodeURIComponent(q)}&page=${p}`)
       const data: GoogleBook[] = await res.json()
       const mapped = data.map((b, i) => ({
         ...b,
@@ -826,7 +815,7 @@ function SeriesContent() {
                           : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                         }
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
+                          <p className="font-bold text-xs text-ink line-clamp-2 leading-snug">{book.title}</p>
                           <p className="text-[11px] text-gray-500">{book.author}</p>
                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${STATUS_CHIP[book.status]}`}>{book.status}</span>
                         </div>
@@ -865,14 +854,6 @@ function SeriesContent() {
                     </button>
                   ))}
                 </div>
-              </div>
-              <div className="flex p-1 bg-white rounded-2xl">
-                {([['google', '🔍 Google Books'], ['openlibrary', '📖 Open Library']] as const).map(([s, label]) => (
-                  <button key={s} onClick={() => { setSource(s); setResults([]); setPage(0) }}
-                    className={`flex-1 py-1.5 rounded-xl font-black text-xs transition-all ${source === s ? 'bg-violet-light text-violet shadow-sm' : 'text-gray-400'}`}>
-                    {label}
-                  </button>
-                ))}
               </div>
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -930,7 +911,7 @@ function SeriesContent() {
                             : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                           }
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-xs text-ink line-clamp-1">{book.title}</p>
+                            <p className="font-bold text-xs text-ink line-clamp-2 leading-snug">{book.title}</p>
                             <p className="text-[11px] text-gray-500">{book.authors.join(', ')}</p>
                             {year && <p className="text-[11px] text-gray-400">{year}{book.pageCount ? ` · ${book.pageCount}p` : ''}</p>}
                           </div>
@@ -1088,7 +1069,7 @@ function SeriesContent() {
                           : <div className={`cover-${coverIdx(book.title)} w-9 h-[50px] rounded-lg flex items-center justify-center text-base flex-shrink-0`}>📖</div>
                         }
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-ink line-clamp-1">
+                          <p className="font-bold text-sm text-ink line-clamp-2 leading-snug">
                             {book.series_number ? `#${book.series_number} · ` : ''}{book.title}
                           </p>
                           {book.rating > 0 && <span className="text-xs">{'⭐'.repeat(book.rating)}</span>}
